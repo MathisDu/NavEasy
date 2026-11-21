@@ -8,9 +8,11 @@ import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportType
 import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.model.RouteResponse
+import com.example.lauzhack26_multiplatform.model.Severity
 import io.ktor.client.*
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -48,6 +50,9 @@ class MapViewModel(
     private val _reportLocation = MutableStateFlow<Location?>(null)
     val reportLocation: StateFlow<Location?> = _reportLocation.asStateFlow()
 
+    private val _selectedReport = MutableStateFlow<Report?>(null)
+    val selectedReport: StateFlow<Report?> = _selectedReport.asStateFlow()
+
     fun setProfile(profile: MobilityProfile) {
         _selectedProfile.value = profile
     }
@@ -71,11 +76,11 @@ class MapViewModel(
         }
     }
 
-    fun addReport(type: ReportType, description: String, location: Location) {
+    fun addReport(title: String, category: String, description: String, location: Location, disabilityTypes: List<String>, severity: Severity) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val request = ReportRequest(type, description, location)
+                val request = ReportRequest(title, category, description, location, disabilityTypes, severity)
                 val response = httpClient.post("$serverUrl/api/reports") {
                     contentType(ContentType.Application.Json)
                     setBody(request)
@@ -138,9 +143,47 @@ class MapViewModel(
         _errorMessage.value = null
     }
 
+    fun selectReport(report: Report) {
+        _selectedReport.value = report
+    }
+
+    fun closeReportDetails() {
+        _selectedReport.value = null
+    }
+
+    fun voteOnReport(reportId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val response = httpClient.patch("$serverUrl/api/reports/$reportId") {
+                    contentType(ContentType.Application.Json)
+                }
+                if (response.status == HttpStatusCode.OK) {
+                    loadReports()
+                    // Update the selected report if it's still open
+                    _selectedReport.value?.let { current ->
+                        if (current.id == reportId) {
+                            _selectedReport.value = response.body<Report>()
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _errorMessage.value = "Erreur de vote: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     data class ReportRequest(
-        val type: ReportType,
+        val title: String,
+        val category: String,
         val description: String,
-        val location: Location
+        val location: Location,
+        val disabilityTypes: List<String>,
+        val severity: Severity = Severity.MEDIUM
     )
+
 }

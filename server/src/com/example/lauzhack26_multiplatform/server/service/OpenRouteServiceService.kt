@@ -13,13 +13,13 @@ class OpenRouteServiceService(
     private val httpClient: HttpClient
 ) {
 
-    private val apiKey: String = System.getenv("ORS_API_KEY")
-        ?: throw IllegalStateException("ORS_API_KEY environment variable is not set")
+    private val apiKey: String? = System.getenv("ORS_API_KEY")
 
     suspend fun calculateRoute(request: RouteRequest): RouteResponse {
         val allReports = repository.getAll()
         val incompatibleReports = allReports.filter { report ->
-            request.profile.incompatibleReportTypes.contains(report.type)
+            val reportType = try { ReportType.valueOf(report.category) } catch (e: IllegalArgumentException) { null }
+            reportType != null && request.profile.incompatibleReportTypes.contains(reportType)
         }
 
         val avoidPolygons = buildAvoidPolygons(incompatibleReports)
@@ -39,6 +39,10 @@ class OpenRouteServiceService(
                     put("avoid_polygons", avoidPolygons)
                 })
             }
+        }
+
+        if (apiKey.isNullOrBlank()) {
+            throw Exception("ORS_API_KEY is not configured. Set the ORS_API_KEY environment variable to enable routing.")
         }
 
         val response = httpClient.post("https://api.openrouteservice.org/v2/directions/{profile}".replace("{profile}", orsProfile)) {
