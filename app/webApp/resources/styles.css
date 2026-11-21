@@ -4,6 +4,7 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+    touch-action: none; /* Empêche le défilement de la page sur mobile/web */
 }
 
 #MapContainer {
@@ -14,12 +15,18 @@ html, body {
 
 #TileLayer {
     position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Arrière-plan */
 }
 
 #ComposeTarget {
     position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 2;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2; /* Premier plan */
 }

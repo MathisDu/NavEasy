@@ -1,14 +1,13 @@
 package com.example.lauzhack26_multiplatform.map
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -91,14 +90,18 @@ fun OsmMap(
         }
     }
 
-    // Update HTML tile layer on WasmJs whenever zoom or offset changes
-    // Using SideEffect so it runs after every recomposition triggered by state changes
+    // 1. CORRECTION : Extraire la lecture de l'état ici, au niveau racine du composant
+    // Cela force Compose à rappeler ce bloc de code à chaque mouvement de la souris
+    val currentOffset = mapState.offset
+    val currentZoom = mapState.zoom
+
+    // 2. Le SideEffect doit utiliser ces nouvelles variables
     if (isWasmJs && initialized && canvasSize.width > 0 && canvasSize.height > 0) {
         SideEffect {
             tileLayer.updateTiles(
-                offsetX = mapState.offset.x,
-                offsetY = mapState.offset.y,
-                zoom = mapState.zoom,
+                offsetX = currentOffset.x,
+                offsetY = currentOffset.y,
+                zoom = currentZoom,
                 canvasWidth = canvasSize.width,
                 canvasHeight = canvasSize.height
             )
@@ -113,17 +116,9 @@ fun OsmMap(
                     canvasSize = newSize
                 }
             }
-            .pointerInput(mapState.zoom) {
-                detectTransformGestures { _, _, zoomChange, _ ->
-                    if (zoomChange != 1.0f) {
-                        val newZoom = kotlin.math.max(1, kotlin.math.min(19, (mapState.zoom * zoomChange).toInt()))
-                        if (newZoom != mapState.zoom) {
-                            mapState.zoom = newZoom
-                        }
-                    }
-                }
-            }
+            .background(Color.Transparent) // Hitbox forcée pour WasmJs
             .pointerInput(Unit) {
+                // 1. Gère le glissement (Drag) avec le clic-gauche de la souris ou un doigt
                 detectDragGestures { change, dragAmount ->
                     change.consume()
                     mapState.offset = Offset(
@@ -133,6 +128,46 @@ fun OsmMap(
                 }
             }
             .pointerInput(Unit) {
+                // 2. Gère le Zoom spécifiquement avec la molette de la souris (et cible le curseur)
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Scroll) {
+                            val change = event.changes.firstOrNull()
+                            val delta = change?.scrollDelta?.y ?: 0f
+
+                            if (delta != 0f) {
+                                val zoomDirection = if (delta > 0) -1 else 1
+                                val newZoom = kotlin.math.max(1, kotlin.math.min(19, mapState.zoom + zoomDirection))
+
+                                if (newZoom != mapState.zoom) {
+                                    // a) Trouver la position actuelle du curseur de la souris
+                                    val pointerPos = change?.position ?: Offset.Zero
+
+                                    // b) Convertir la position de la souris en coordonnée géographique (lat/lon) avec l'ANCIEN zoom
+                                    val worldXBefore = (pointerPos.x - mapState.offset.x).toDouble()
+                                    val worldYBefore = (pointerPos.y - mapState.offset.y).toDouble()
+                                    val (lat, lon) = MercatorProjection.pixelToLocation(worldXBefore, worldYBefore, mapState.zoom)
+
+                                    // c) Appliquer le nouveau zoom
+                                    mapState.zoom = newZoom
+
+                                    // d) Recalculer les pixels mondiaux de cette même coordonnée géographique avec le NOUVEAU zoom
+                                    val (worldXAfter, worldYAfter) = MercatorProjection.locationToPixel(lat, lon, newZoom)
+
+                                    // e) Recalculer le décalage (offset) de la carte pour que le point sous la souris ne bouge pas
+                                    mapState.offset = Offset(
+                                        (pointerPos.x - worldXAfter).toFloat(),
+                                        (pointerPos.y - worldYAfter).toFloat()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .pointerInput(Unit) {
+                // 3. Gère les clics courts pour le signalement d'obstacles
                 detectTapGestures { tapOffset ->
                     val worldX = (tapOffset.x - mapState.offset.x).toDouble()
                     val worldY = (tapOffset.y - mapState.offset.y).toDouble()
@@ -143,17 +178,16 @@ fun OsmMap(
     ) {
         val size = IntSize(this.size.width.toInt(), this.size.height.toInt())
 
-        // 1. Percer le fond du canvas WebGL pour le rendre transparent
+        // Percer le fond du canvas WebGL pour révéler #TileLayer en dessous
         if (isWasmJs) {
             drawRect(
                 color = Color.Transparent,
-                blendMode = BlendMode.Clear
+                blendMode = androidx.compose.ui.graphics.BlendMode.Clear
             )
         }
 
         val tileSize = 256f
         val startCol = floor((-mapState.offset.x) / tileSize).toInt()
-
         val endCol = startCol + (size.width / tileSize).toInt() + 1
         val startRow = floor((-mapState.offset.y) / tileSize).toInt()
         val endRow = startRow + (size.height / tileSize).toInt() + 1
