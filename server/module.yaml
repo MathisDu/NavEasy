@@ -4,10 +4,17 @@ dependencies:
   - //core
   - $ktor.server.core
   - $ktor.server.netty
+  - $ktor.client.core
+  - $ktor.client.cio
   - $libs.logback.classic
+  - $libs.ktor.server.content.negotiation
+  - $libs.ktor.serialization.kotlinx.json
 
 settings:
   ktor: enabled
+  kotlin:
+    serialization:
+      enabled: true
   jvm:
     mainClass: com.example.lauzhack26_multiplatform.server.ApplicationKt
 
