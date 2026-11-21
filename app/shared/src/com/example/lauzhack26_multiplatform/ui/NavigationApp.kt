@@ -229,17 +229,32 @@ fun NavigationApp(
 
         // Error message
         errorMessage?.let { error ->
-            Snackbar(
+            Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                action = {
+                    .padding(16.dp)
+                    .fillMaxWidth(0.9f),
+                shape = RoundedCornerShape(12.dp),
+                tonalElevation = 6.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = error,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        maxLines = 5
+                    )
                     TextButton(onClick = { viewModel.dismissError() }) {
                         Text("Fermer")
                     }
                 }
-            ) {
-                Text(error)
             }
         }
 

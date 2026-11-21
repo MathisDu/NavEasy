@@ -12,7 +12,7 @@ L'objectif est de fournir un MVP fonctionnel sur Android, iOS et Web (Wasm) util
 
 **En Scope :**
 - Sélection du profil de mobilité (Fauteuil, Béquilles, etc.).
-- Affichage d'une carte OSM via un moteur Canvas personnalisé.
+- Affichage d'une carte OSM via un moteur Canvas personnalisé avec tuiles HTML sur WasmJs.
 - Signalement d'obstacles (type, description, position).
 - Calcul d'itinéraire avec évitement dynamique des obstacles incompatibles.
 - Backend agissant comme proxy sécurisé vers OpenRouteService.
@@ -75,7 +75,7 @@ graph TD
 - **Sécurité** : La clé API `ORS_API_KEY` reste côté serveur.
 
 #### 3. Frontend (`app/shared`)
-- **Moteur de Carte** : Utilisation de `drawBehind` et `drawIntoCanvas` pour afficher les tuiles OSM.
+- **Moteur de Carte WasmJs** : Tuiles OSM rendues via des `<img>` HTML positionnés au-dessus du Canvas Compose (z-index: 2) avec `pointer-events: none` pour que les clics traversent vers le Canvas. Le Canvas reste transparent et gère les interactions (zoom, pan, tap). La UI Compose (dialogs, boutons) est dessinée dans le Canvas et reste cliquable.
 - **Conversion de Coordonnées** : Implémentation de la projection de Mercator pour transformer `(lat, lon)` en positions `(x, y)` sur le Canvas selon le niveau de zoom.
 
 ### Modèles de Données (Pseudocode)
@@ -100,6 +100,7 @@ data class RouteRequest(
 ### Risques & Atténuations
 - **Performance du Canvas** : Le rendu de nombreuses tuiles peut être gourmand. Solution : Cache mémoire des tuiles et rendu limité à la zone visible.
 - **Limites d'API ORS** : Le paramètre `avoid_polygons` a des limites. Solution : Ne filtrer que les obstacles les plus proches de l'itinéraire vol d'oiseau si nécessaire.
+- **Canvas opaque sur WasmJs** : Le Canvas Skiko/WebGL a un fond blanc opaque qu'on ne peut pas rendre transparent. Solution : Tuiles HTML au premier plan avec `pointer-events: none`.
 
 # Tests (Testing)
 
@@ -107,9 +108,11 @@ data class RouteRequest(
 La validation sera effectuée de manière incrémentale à l'aide de builds et de logs.
 
 ### Scénarios Clés
-1. **Ajout d'un rapport** : Vérifier qu'un clic sur la carte crée bien un rapport via le serveur et qu'il réapparaît après rafraîchissement.
-2. **Itinéraire direct** : Vérifier le calcul d'un point A à un point B sans obstacle.
-3. **Itinéraire avec évitement** : Placer un obstacle de type "Escaliers" sur le trajet direct, sélectionner le profil "Fauteuil roulant" et vérifier que l'itinéraire proposé fait un détour.
+1. **Carte visible** : Vérifier que les tuiles OSM s'affichent correctement sur Paris au chargement.
+2. **Interactions** : Zoomer, dézoomer et déplacer la carte.
+3. **Ajout d'un rapport** : Vérifier qu'un clic sur la carte crée bien un rapport via le serveur et qu'il réapparaît après rafraîchissement.
+4. **Itinéraire direct** : Vérifier le calcul d'un point A à un point B sans obstacle.
+5. **Itinéraire avec évitement** : Placer un obstacle de type "Escaliers" sur le trajet direct, sélectionner le profil "Fauteuil roulant" et vérifier que l'itinéraire proposé fait un détour.
 
 ### Cas Limites
 - **Hors ligne** : Comportement gracieux si les tuiles ne peuvent pas être téléchargées.
@@ -160,3 +163,23 @@ Finaliser l'application avec les fonctionnalités métier.
 - Ajouter l'affichage des marqueurs de signalements et du tracé de l'itinéraire sur la carte.
 - Implémenter le formulaire d'ajout de signalement (clic sur carte).
 - Effectuer une vérification finale du flux complet A -> B.
+
+### ✓ Step 6: Tuiles OSM réelles et CORS
+Connecter l'application aux API OpenStreetMap et OpenRouteService pour afficher la carte réelle et envoyer/récevoir les signalements.
+
+- Implémenter `HtmlTileLayer` pour WasmJs : affichage des tuiles OSM via des éléments HTML `<img>`.
+- Créer l'interface `TileLayerInterface` avec implémentations `expect/actual` par plateforme.
+- Mettre à jour `OsmMap` pour utiliser le tile layer sur WasmJs et les placeholders gris sur les autres plateformes.
+- Ajouter le support CORS OPTIONS (preflight) sur le serveur Ktor pour les routes `/api/reports` et `/api/route`.
+- Mettre à jour `index.html` avec le conteneur `TileLayer`.
+- Builds de vérification : shared (wasmJs, android), server (jvm), webApp (wasmJs).
+
+### ✓ Step 7: Correction du rendu de la carte — Tuiles HTML au premier plan
+Résoudre le problème du Canvas opaque Skiko sur WasmJs en plaçant les tuiles HTML au-dessus du Canvas avec `pointer-events: none`.
+
+- Mettre à jour `styles.css` : `#TileLayer` en `z-index: 2` avec `pointer-events: none`, `#ComposeTarget` en `z-index: 1`.
+- Supprimer les tentatives de transparence CSS sur le Canvas (`#ComposeTarget canvas { background: transparent }`) qui ne fonctionnent pas sur Skiko/WebGL.
+- S'assurer que `HtmlTileLayer.wasmJs.kt` positionne les tuiles correctement avec la même projection Mercator que le Canvas.
+- Vérifier que les interactions (zoom, pan, tap) traversent les tuiles HTML pour atteindre le Canvas Compose.
+- Vérifier que la UI Compose (dialogs, boutons) reste cliquable car elle est dessinée dans le Canvas et capture les événements avant qu'ils ne traversent.
+- Build de vérification : shared (wasmJs, android), webApp (wasmJs).

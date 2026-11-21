@@ -8,11 +8,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
 import com.example.lauzhack26_multiplatform.model.Location
 import kotlin.math.floor
@@ -20,12 +22,14 @@ import kotlin.math.floor
 /**
  * State for the OSM map component.
  */
-class MapState {
-    @Suppress("unused")
-    var centerLat by mutableStateOf(48.8566) // Paris par défaut
-    @Suppress("unused")
-    var centerLon by mutableStateOf(2.3522)
-    var zoom by mutableStateOf(15)
+class MapState(
+    initialLat: Double = 48.8566, // Paris par défaut
+    initialLon: Double = 2.3522,
+    initialZoom: Int = 15
+) {
+    var centerLat by mutableStateOf(initialLat)
+    var centerLon by mutableStateOf(initialLon)
+    var zoom by mutableStateOf(initialZoom)
     var offset by mutableStateOf(Offset.Zero)
 
     /**
@@ -53,6 +57,8 @@ class MapState {
 
 /**
  * Composable that renders an OpenStreetMap using Canvas.
+ * On WasmJs, tiles are rendered via HTML <img> elements behind the Canvas.
+ * On other platforms, tiles are drawn as gray placeholders in the Canvas.
  */
 @Composable
 fun OsmMap(
@@ -62,9 +68,51 @@ fun OsmMap(
     routeCoordinates: List<Location> = emptyList(),
     reportLocations: List<Location> = emptyList(),
 ) {
+    val tileLayer = remember { createTileLayer() }
+    val isWasmJs = tileLayer != null
+
+    // Canvas dimensions obtained via onGloballyPositioned before first draw
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Initialize offset once when canvas size becomes known
+    var initialized by remember { mutableStateOf(false) }
+
+    // Initialize offset as soon as we know the canvas size
+    LaunchedEffect(canvasSize) {
+        if (!initialized && canvasSize.width > 0 && canvasSize.height > 0) {
+            val (centerPixelX, centerPixelY) = MercatorProjection.locationToPixel(
+                mapState.centerLat, mapState.centerLon, mapState.zoom
+            )
+            mapState.offset = Offset(
+                -(centerPixelX - canvasSize.width / 2).toFloat(),
+                -(centerPixelY - canvasSize.height / 2).toFloat()
+            )
+            initialized = true
+        }
+    }
+
+    // Update HTML tile layer on WasmJs whenever zoom or offset changes
+    // Using SideEffect so it runs after every recomposition triggered by state changes
+    if (isWasmJs && initialized && canvasSize.width > 0 && canvasSize.height > 0) {
+        SideEffect {
+            tileLayer.updateTiles(
+                offsetX = mapState.offset.x,
+                offsetY = mapState.offset.y,
+                zoom = mapState.zoom,
+                canvasWidth = canvasSize.width,
+                canvasHeight = canvasSize.height
+            )
+        }
+    }
 
     Canvas(
         modifier = modifier
+            .onGloballyPositioned { layoutCoordinates ->
+                val newSize = IntSize(layoutCoordinates.size.width, layoutCoordinates.size.height)
+                if (newSize != canvasSize) {
+                    canvasSize = newSize
+                }
+            }
             .pointerInput(mapState.zoom) {
                 detectTransformGestures { _, _, zoomChange, _ ->
                     if (zoomChange != 1.0f) {
@@ -93,30 +141,40 @@ fun OsmMap(
                 }
             }
     ) {
-        // Use this.size directly instead of storing in mutableState to avoid layout conflicts
-        val canvasSize = IntSize(this.size.width.toInt(), this.size.height.toInt())
+        val size = IntSize(this.size.width.toInt(), this.size.height.toInt())
+
+        // 1. Percer le fond du canvas WebGL pour le rendre transparent
+        if (isWasmJs) {
+            drawRect(
+                color = Color.Transparent,
+                blendMode = BlendMode.Clear
+            )
+        }
 
         val tileSize = 256f
         val startCol = floor((-mapState.offset.x) / tileSize).toInt()
-        val endCol = startCol + (canvasSize.width / tileSize).toInt() + 1
+
+        val endCol = startCol + (size.width / tileSize).toInt() + 1
         val startRow = floor((-mapState.offset.y) / tileSize).toInt()
-        val endRow = startRow + (canvasSize.height / tileSize).toInt() + 1
+        val endRow = startRow + (size.height / tileSize).toInt() + 1
         val maxTiles = MercatorProjection.tilesAtZoom(mapState.zoom)
 
-        // Draw tiles
-        for (row in startRow..endRow) {
-            for (col in startCol..endCol) {
-                if (row < 0 || row >= maxTiles || col < 0 || col >= maxTiles) continue
+        // Draw placeholder tiles (gray background) for non-WasmJs platforms
+        // On WasmJs, tiles are rendered by HtmlTileLayer behind the Canvas
+        if (!isWasmJs) {
+            for (row in startRow..endRow) {
+                for (col in startCol..endCol) {
+                    if (row < 0 || row >= maxTiles || col < 0 || col >= maxTiles) continue
 
-                val x = col * tileSize + mapState.offset.x
-                val y = row * tileSize + mapState.offset.y
+                    val x = col * tileSize + mapState.offset.x
+                    val y = row * tileSize + mapState.offset.y
 
-                // Draw placeholder for missing tiles
-                drawRect(
-                    color = Color.LightGray,
-                    topLeft = Offset(x, y),
-                    size = Size(tileSize, tileSize)
-                )
+                    drawRect(
+                        color = Color(0xFFE0E0E0),
+                        topLeft = Offset(x, y),
+                        size = Size(tileSize, tileSize)
+                    )
+                }
             }
         }
 

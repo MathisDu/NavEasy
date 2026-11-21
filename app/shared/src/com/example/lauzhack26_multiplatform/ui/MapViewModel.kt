@@ -61,10 +61,12 @@ class MapViewModel(
                     val reportsList = response.body<List<Report>>()
                     _reports.value = reportsList
                 }
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur chargement signalements: ${e.message}"
+                if (e !is CancellationException) {
+                    _errorMessage.value = "Erreur chargement signalements: ${e.message}"
+                } else {
+                    throw e
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -83,10 +85,12 @@ class MapViewModel(
                 if (response.status == HttpStatusCode.Created) {
                     loadReports()
                 }
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur ajout signalement: ${e.message}"
+                if (e !is CancellationException) {
+                    _errorMessage.value = "Erreur ajout signalement: ${e.message}"
+                } else {
+                    throw e
+                }
             } finally {
                 _isLoading.value = false
                 _showReportForm.value = false
@@ -108,12 +112,20 @@ class MapViewModel(
                     val routeResponse = response.body<RouteResponse>()
                     _route.value = routeResponse.coordinates
                 } else {
-                    _errorMessage.value = "Erreur calcul itinéraire"
+                    // Try to read the error message from the server response
+                    val errorBody = try {
+                        response.body<String>()
+                    } catch (_: Exception) {
+                        "<unable to read error>"
+                    }
+                    _errorMessage.value = "Erreur calcul itinéraire (${response.status}): $errorBody"
                 }
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                if (e !is CancellationException) {
+                    _errorMessage.value = "Erreur: ${e.message}"
+                } else {
+                    throw e
+                }
             } finally {
                 _isLoading.value = false
             }

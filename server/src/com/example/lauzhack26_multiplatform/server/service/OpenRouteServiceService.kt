@@ -13,10 +13,13 @@ class OpenRouteServiceService(
     private val httpClient: HttpClient
 ) {
 
-    private val apiKey: String = System.getenv("ORS_API_KEY")
-        ?: throw IllegalStateException("ORS_API_KEY environment variable is not set")
+    private val apiKey: String? = System.getenv("ORS_API_KEY")
 
     suspend fun calculateRoute(request: RouteRequest): RouteResponse {
+        if (apiKey.isNullOrEmpty()) {
+            throw IllegalStateException("ORS_API_KEY environment variable is not set. Set it to enable routing via OpenRouteService.")
+        }
+
         val allReports = repository.getAll()
         val incompatibleReports = allReports.filter { report ->
             request.profile.incompatibleReportTypes.contains(report.type)
@@ -61,7 +64,13 @@ class OpenRouteServiceService(
                 durationSeconds = duration
             )
         } else {
-            throw Exception("ORS API error: ${response.status}")
+            // Read the error body to include the actual ORS error message
+            val errorBody = try {
+                response.body<String>()
+            } catch (_: Exception) {
+                "<unable to read error body>"
+            }
+            throw Exception("ORS API error ${response.status}: $errorBody")
         }
     }
 

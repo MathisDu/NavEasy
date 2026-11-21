@@ -7,14 +7,19 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.Route
+import io.ktor.server.routing.*
 
 fun Route.reportsRoutes(repository: ReportRepository) {
 
     route("/api/reports") {
+
+        // Handle CORS preflight
+        options {
+            call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, "*")
+            call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "GET, POST, OPTIONS")
+            call.response.headers.append(HttpHeaders.AccessControlAllowHeaders, "Content-Type")
+            call.respond(HttpStatusCode.OK)
+        }
 
         get {
             call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, "*")
