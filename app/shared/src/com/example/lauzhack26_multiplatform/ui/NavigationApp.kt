@@ -22,6 +22,7 @@ import com.example.lauzhack26_multiplatform.map.MapState
 import com.example.lauzhack26_multiplatform.map.OsmMap
 import com.example.lauzhack26_multiplatform.model.Location
 import com.example.lauzhack26_multiplatform.model.MobilityProfile
+import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.ReportType
 
 @Composable
@@ -36,11 +37,13 @@ fun NavigationApp(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val showReportForm by viewModel.showReportForm.collectAsState()
     val reportLocation by viewModel.reportLocation.collectAsState()
+    val osmFeatures by viewModel.osmFeatures.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var routeStart by remember { mutableStateOf<Location?>(null) }
     var routeEnd by remember { mutableStateOf<Location?>(null) }
     var showRouteInput by remember { mutableStateOf(false) }
+    var selectedFeature by remember { mutableStateOf<OsmFeature?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadReports()
@@ -54,6 +57,13 @@ fun NavigationApp(
         }
     }
 
+    // Reload OSM features when map center or zoom changes
+    LaunchedEffect(mapState.centerLat, mapState.centerLon, mapState.zoom) {
+        if (!showProfileSelector) {
+            viewModel.loadStepsFromOverpass(mapState.centerLat, mapState.centerLon, mapState.zoom)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Map
         OsmMap(
@@ -61,6 +71,10 @@ fun NavigationApp(
             mapState = mapState,
             routeCoordinates = route,
             reportLocations = reports.map { it.location },
+            osmFeatures = osmFeatures,
+            onFeatureClick = { feature ->
+                selectedFeature = feature
+            },
             onCanvasSizeReady = { size ->
                 canvasSizeForFit = size
             },
@@ -283,6 +297,50 @@ fun NavigationApp(
                     .align(Alignment.TopCenter)
                     .padding(16.dp)
             )
+        }
+
+        // OSM Feature Detail Modal
+        selectedFeature?.let { feature ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x80000000))
+                    .clickable(onClick = { selectedFeature = null })
+            ) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(32.dp)
+                        .wrapContentHeight()
+                        .wrapContentWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Text(
+                            text = "🪜 Escalier",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = feature.description,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Lat: ${feature.location.lat}, Lng: ${feature.location.lon}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { selectedFeature = null }) {
+                                Text("✕ Fermer")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

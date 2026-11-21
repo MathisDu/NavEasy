@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size as GeometrySize
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
@@ -26,7 +27,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.lauzhack26_multiplatform.model.Location
+import com.example.lauzhack26_multiplatform.model.OsmFeature
 import kotlin.math.floor
+import kotlin.math.sqrt
 
 /**
  * State for the OSM map component.
@@ -155,8 +158,10 @@ fun OsmMap(
     modifier: Modifier = Modifier,
     mapState: MapState,
     onLocationClick: ((Location) -> Unit)? = null,
+    onFeatureClick: ((OsmFeature) -> Unit)? = null,
     routeCoordinates: List<Location> = emptyList(),
     reportLocations: List<Location> = emptyList(),
+    osmFeatures: List<OsmFeature> = emptyList(),
     onCanvasSizeReady: ((IntSize) -> Unit)? = null,
 ) {
     val tileLayer = remember { createTileLayer() }
@@ -299,10 +304,35 @@ fun OsmMap(
                 .pointerInput(Unit) {
                     // 4. Gère les clics courts pour le signalement d'obstacles ou les points
                     detectTapGestures { tapOffset ->
-                        val worldX = (tapOffset.x - mapState.offset.x).toDouble()
-                        val worldY = (tapOffset.y - mapState.offset.y).toDouble()
-                        val (lat, lon) = MercatorProjection.pixelToLocation(worldX, worldY, mapState.zoom)
-                        onLocationClick?.invoke(Location(lat = lat, lon = lon))
+                        // Check if tap hits an OSM feature (orange circle)
+                        val hitRadius = 20f
+                        var featureHit = false
+
+                        for (feature in osmFeatures) {
+                            val (worldX, worldY) = MercatorProjection.locationToPixel(
+                                feature.location.lat, feature.location.lon, mapState.zoom
+                            )
+                            val canvasX = (worldX + mapState.offset.x.toDouble()).toFloat()
+                            val canvasY = (worldY + mapState.offset.y.toDouble()).toFloat()
+
+                            val dx = tapOffset.x - canvasX
+                            val dy = tapOffset.y - canvasY
+                            val distance = sqrt(dx * dx + dy * dy)
+
+                            if (distance <= hitRadius) {
+                                onFeatureClick?.invoke(feature)
+                                featureHit = true
+                                break
+                            }
+                        }
+
+                        // If no feature was hit, trigger the default location click
+                        if (!featureHit) {
+                            val worldX = (tapOffset.x - mapState.offset.x).toDouble()
+                            val worldY = (tapOffset.y - mapState.offset.y).toDouble()
+                            val (lat, lon) = MercatorProjection.pixelToLocation(worldX, worldY, mapState.zoom)
+                            onLocationClick?.invoke(Location(lat = lat, lon = lon))
+                        }
                     }
                 }
         ) {
@@ -386,6 +416,20 @@ fun OsmMap(
                 drawCircle(
                     color = Color.Red,
                     radius = 8f,
+                    center = Offset(canvasX, canvasY)
+                )
+            }
+
+            // Draw OSM features (stairs) as orange circles
+            for (feature in osmFeatures) {
+                val (worldX, worldY) = MercatorProjection.locationToPixel(
+                    feature.location.lat, feature.location.lon, mapState.zoom
+                )
+                val canvasX = (worldX + mapState.offset.x.toDouble()).toFloat()
+                val canvasY = (worldY + mapState.offset.y.toDouble()).toFloat()
+                drawCircle(
+                    color = Color(0xFFFFA500),
+                    radius = 12f,
                     center = Offset(canvasX, canvasY)
                 )
             }
