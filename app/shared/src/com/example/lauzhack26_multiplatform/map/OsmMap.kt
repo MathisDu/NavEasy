@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -62,6 +63,86 @@ class MapState(
         val (lat, lon) = MercatorProjection.pixelToLocation(centerX, centerY, zoom)
         return Location(lat = lat, lon = lon)
     }
+
+    /**
+     * Adjust the map's center, zoom, and offset so that all the given route coordinates
+     * are visible within the canvas of the specified size.
+     * All calculations use local variables to avoid triggering Compose recomposition mid-calculation.
+     */
+    fun fitRouteToViewport(coordinates: List<Location>, canvasSize: IntSize) {
+        if (coordinates.size < 2) return
+
+        val canvasWidth = canvasSize.width.toDouble()
+        val canvasHeight = canvasSize.height.toDouble()
+        val padding = 80.0
+
+        // Find the geographic bounding box
+        var minLat = Double.MAX_VALUE
+        var minLon = Double.MAX_VALUE
+        var maxLat = Double.MIN_VALUE
+        var maxLon = Double.MIN_VALUE
+
+        for (loc in coordinates) {
+            if (loc.lat < minLat) minLat = loc.lat
+            if (loc.lon < minLon) minLon = loc.lon
+            if (loc.lat > maxLat) maxLat = loc.lat
+            if (loc.lon > maxLon) maxLon = loc.lon
+        }
+
+        val latRange = maxLat - minLat
+        val lonRange = maxLon - minLon
+
+        if (latRange <= 0.0001 && lonRange <= 0.0001) return
+
+        // Try each zoom level from 19 down to 1 and pick the highest zoom where the route fits
+        val TILE_SIZE = 256.0
+        var bestZoom = 1
+        for (testZoom in 19 downTo 1) {
+            val yMin = MercatorProjection.latToY(maxLat, testZoom)
+            val yMax = MercatorProjection.latToY(minLat, testZoom)
+            val yRange = yMax - yMin
+            val xRange = lonRange / 360.0 * TILE_SIZE * (1 shl testZoom).toDouble()
+
+            if (xRange <= canvasWidth - 2 * padding && yRange <= canvasHeight - 2 * padding) {
+                bestZoom = testZoom
+                break
+            }
+        }
+
+        val newZoom = bestZoom
+
+        // Calculate pixel bounds at the new zoom
+        var minX = Double.MAX_VALUE
+        var minY = Double.MAX_VALUE
+        var maxX = Double.MIN_VALUE
+        var maxY = Double.MIN_VALUE
+
+        for (loc in coordinates) {
+            val (x, y) = MercatorProjection.locationToPixel(loc.lat, loc.lon, newZoom)
+            if (x < minX) minX = x
+            if (y < minY) minY = y
+            if (x > maxX) maxX = x
+            if (y > maxY) maxY = y
+        }
+
+        // Center of the route in pixel space
+        val centerX = (minX + maxX) / 2.0
+        val centerY = (minY + maxY) / 2.0
+
+        // Update all state at once to avoid mid-calculation recomposition
+        zoom = newZoom
+        offset = Offset(
+            -(centerX - canvasWidth / 2).toFloat(),
+            -(centerY - canvasHeight / 2).toFloat()
+        )
+        val (newLat, newLon) = MercatorProjection.pixelToLocation(centerX, centerY, newZoom)
+        centerLat = newLat
+        centerLon = newLon
+    }
+
+    companion object {
+        private const val TILE_SIZE = 256
+    }
 }
 
 /**
@@ -76,6 +157,7 @@ fun OsmMap(
     onLocationClick: ((Location) -> Unit)? = null,
     routeCoordinates: List<Location> = emptyList(),
     reportLocations: List<Location> = emptyList(),
+    onCanvasSizeReady: ((IntSize) -> Unit)? = null,
 ) {
     val tileLayer = remember { createTileLayer() }
     val isWasmJs = tileLayer != null
@@ -86,17 +168,22 @@ fun OsmMap(
     // Initialize offset once when canvas size becomes known
     var initialized by remember { mutableStateOf(false) }
 
-    // Initialize offset as soon as we know the canvas size
+    // Initialize offset and notify parent when canvas size becomes known
     LaunchedEffect(canvasSize) {
-        if (!initialized && canvasSize.width > 0 && canvasSize.height > 0) {
-            val (centerPixelX, centerPixelY) = MercatorProjection.locationToPixel(
-                mapState.centerLat, mapState.centerLon, mapState.zoom
-            )
-            mapState.offset = Offset(
-                -(centerPixelX - canvasSize.width / 2).toFloat(),
-                -(centerPixelY - canvasSize.height / 2).toFloat()
-            )
-            initialized = true
+        if (canvasSize.width > 0 && canvasSize.height > 0) {
+            // Initialize offset only once on first canvas size
+            if (!initialized) {
+                val (centerPixelX, centerPixelY) = MercatorProjection.locationToPixel(
+                    mapState.centerLat, mapState.centerLon, mapState.zoom
+                )
+                mapState.offset = Offset(
+                    -(centerPixelX - canvasSize.width / 2).toFloat(),
+                    -(centerPixelY - canvasSize.height / 2).toFloat()
+                )
+                initialized = true
+            }
+            // Notify parent whenever canvas size is available
+            onCanvasSizeReady?.invoke(canvasSize)
         }
     }
 
@@ -129,8 +216,39 @@ fun OsmMap(
                         canvasSize = newSize
                     }
                 }
-                .background(Color.Transparent)
+                .background(Color.Transparent) // Hitbox forcée pour WasmJs
                 .pointerInput(Unit) {
+                    // 1. Gère le zoom tactile (Pinch-to-zoom)
+                    detectTransformGestures { centroid, _, zoomChange, _ ->
+                        if (zoomChange != 1.0f) {
+                            val oldZoom = mapState.zoom
+                            val newZoom = kotlin.math.max(1, kotlin.math.min(19, (oldZoom * zoomChange).toInt()))
+
+                            if (newZoom != oldZoom) {
+                                // Try to keep the centroid point under the same location
+                                val (centroidLat, centroidLon) = MercatorProjection.pixelToLocation(
+                                    (centroid.x - mapState.offset.x).toDouble(),
+                                    (centroid.y - mapState.offset.y).toDouble(),
+                                    oldZoom
+                                )
+
+                                mapState.zoom = newZoom
+
+                                // Recalculate offset to keep the centroid stable
+                                val (newCentroidPixelX, newCentroidPixelY) = MercatorProjection.locationToPixel(
+                                    centroidLat, centroidLon, newZoom
+                                )
+
+                                mapState.offset = Offset(
+                                    (centroid.x - newCentroidPixelX).toFloat(),
+                                    (centroid.y - newCentroidPixelY).toFloat()
+                                )
+                            }
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    // 2. Gère le glissement (Drag) avec le clic-gauche de la souris ou un doigt
                     detectDragGestures { change, dragAmount ->
                         change.consume()
                         mapState.offset = Offset(
@@ -140,6 +258,7 @@ fun OsmMap(
                     }
                 }
                 .pointerInput(Unit) {
+                    // 3. Gère le Zoom spécifiquement avec la molette de la souris (et cible le curseur)
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent()
@@ -152,13 +271,21 @@ fun OsmMap(
                                     val newZoom = kotlin.math.max(1, kotlin.math.min(19, mapState.zoom + zoomDirection))
 
                                     if (newZoom != mapState.zoom) {
+                                        // a) Trouver la position actuelle du curseur de la souris
                                         val pointerPos = change?.position ?: Offset.Zero
+
+                                        // b) Convertir la position de la souris en coordonnée géographique (lat/lon) avec l'ANCIEN zoom
                                         val worldXBefore = (pointerPos.x - mapState.offset.x).toDouble()
                                         val worldYBefore = (pointerPos.y - mapState.offset.y).toDouble()
                                         val (lat, lon) = MercatorProjection.pixelToLocation(worldXBefore, worldYBefore, mapState.zoom)
 
+                                        // c) Appliquer le nouveau zoom
                                         mapState.zoom = newZoom
+
+                                        // d) Recalculer les pixels mondiaux de cette même coordonnée géographique avec le NOUVEAU zoom
                                         val (worldXAfter, worldYAfter) = MercatorProjection.locationToPixel(lat, lon, newZoom)
+
+                                        // e) Recalculer le décalage (offset) de la carte pour que le point sous la souris ne bouge pas
                                         mapState.offset = Offset(
                                             (pointerPos.x - worldXAfter).toFloat(),
                                             (pointerPos.y - worldYAfter).toFloat()
@@ -170,6 +297,7 @@ fun OsmMap(
                     }
                 }
                 .pointerInput(Unit) {
+                    // 4. Gère les clics courts pour le signalement d'obstacles ou les points
                     detectTapGestures { tapOffset ->
                         val worldX = (tapOffset.x - mapState.offset.x).toDouble()
                         val worldY = (tapOffset.y - mapState.offset.y).toDouble()
@@ -213,10 +341,40 @@ fun OsmMap(
                 }
             }
 
-            // Draw route polyline
-            if (routeCoordinates.size > 1) {
-                drawRoute(routeCoordinates, mapState, Color.Blue, 4f)
-            }
+        // Draw route polyline
+        if (routeCoordinates.size > 1) {
+            drawRoute(routeCoordinates, mapState, Color(0xFF1565C0), 5f)
+        }
+
+        // Draw start and end markers
+        if (routeCoordinates.isNotEmpty()) {
+            val startLoc = routeCoordinates.first()
+            val (sx, sy) = MercatorProjection.locationToPixel(startLoc.lat, startLoc.lon, mapState.zoom)
+            drawCircle(
+                color = Color(0xFF4CAF50),
+                radius = 8f,
+                center = Offset((sx + mapState.offset.x.toDouble()).toFloat(), (sy + mapState.offset.y.toDouble()).toFloat())
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 4f,
+                center = Offset((sx + mapState.offset.x.toDouble()).toFloat(), (sy + mapState.offset.y.toDouble()).toFloat())
+            )
+        }
+        if (routeCoordinates.size > 1) {
+            val endLoc = routeCoordinates.last()
+            val (ex, ey) = MercatorProjection.locationToPixel(endLoc.lat, endLoc.lon, mapState.zoom)
+            drawCircle(
+                color = Color(0xFFF44336),
+                radius = 8f,
+                center = Offset((ex + mapState.offset.x.toDouble()).toFloat(), (ey + mapState.offset.y.toDouble()).toFloat())
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 4f,
+                center = Offset((ex + mapState.offset.x.toDouble()).toFloat(), (ey + mapState.offset.y.toDouble()).toFloat())
+            )
+        }
 
             // Draw report markers
             for (location in reportLocations) {

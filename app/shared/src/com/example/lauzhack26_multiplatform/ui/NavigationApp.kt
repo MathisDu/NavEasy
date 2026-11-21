@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.lauzhack26_multiplatform.map.MapState
@@ -45,6 +46,14 @@ fun NavigationApp(
         viewModel.loadReports()
     }
 
+    // Fit the map viewport when a new route is displayed
+    var canvasSizeForFit by remember { mutableStateOf<IntSize?>(null) }
+    LaunchedEffect(route) {
+        if (route.isNotEmpty() && canvasSizeForFit != null) {
+            mapState.fitRouteToViewport(route, canvasSizeForFit!!)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Map
         OsmMap(
@@ -52,6 +61,9 @@ fun NavigationApp(
             mapState = mapState,
             routeCoordinates = route,
             reportLocations = reports.map { it.location },
+            onCanvasSizeReady = { size ->
+                canvasSizeForFit = size
+            },
             onLocationClick = { location ->
                 if (showProfileSelector) {
                     // Do nothing while profile selector is shown
