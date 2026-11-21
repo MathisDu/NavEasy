@@ -27,9 +27,17 @@ class HtmlTileLayer(
         offsetY: Float,
         zoom: Int,
         canvasWidth: Int,
-        canvasHeight: Int
+        canvasHeight: Int,
+        isDarkMode: Boolean
     ) {
         container ?: return
+
+        // Applique ou retire le filtre CSS pour le mode sombre
+        if (isDarkMode) {
+            container.classList.add("dark-map-filter")
+        } else {
+            container.classList.remove("dark-map-filter")
+        }
 
         val tileSize = 256
         val maxTiles = MercatorProjection.tilesAtZoom(zoom)

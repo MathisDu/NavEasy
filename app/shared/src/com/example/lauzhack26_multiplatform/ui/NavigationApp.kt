@@ -189,6 +189,12 @@ fun NavigationApp(
                         Text(if (showRouteInput) "Annuler" else "Itinéraire")
                     }
                     Button(
+                        onClick = { mapState.isDarkMode = !mapState.isDarkMode },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
+                    ) {
+                        Text(if (mapState.isDarkMode) "☀️" else "🌙")
+                    }
+                    Button(
                         onClick = { showProfileSelector = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
                     ) {

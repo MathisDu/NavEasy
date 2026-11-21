@@ -22,6 +22,10 @@ html, body {
     z-index: 1; /* Arrière-plan */
 }
 
+.dark-map-filter {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
 #ComposeTarget {
     position: absolute;
     top: 0;
