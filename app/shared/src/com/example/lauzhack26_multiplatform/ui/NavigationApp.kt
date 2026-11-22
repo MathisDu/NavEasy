@@ -243,13 +243,10 @@ fun NavigationApp(
                         }
                         if (tappedReport != null) {
                             viewModel.selectReport(tappedReport)
-                        } else {
-                            if (avoidMode) {
-                                viewModel.addAvoidPolygonAt(location)
-                            } else {
-                                viewModel.openReportForm(location)
-                            }
+                        } else if (avoidMode) {
+                            viewModel.addAvoidPolygonAt(location)
                         }
+                        // Otherwise do nothing — clicking on the map no longer opens the report form
                     }
                 }
             )
@@ -1434,6 +1431,44 @@ fun NavigationApp(
                             fontWeight = FontWeight.Medium,
                             color = palette.textPrimary
                         )
+                    }
+                }
+            }
+
+            // ETA / Confidence bottom panel
+            if (route.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 80.dp, start = 16.dp, end = 16.dp)
+                        .widthIn(max = 450.dp) // Évite que le bloc prenne 100% de l'écran sur la version Web/Desktop
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Logique du temps
+                        val timeMultiplier = when (selectedProfile) {
+                            MobilityProfile.WHEELCHAIR -> 1.3
+                            MobilityProfile.CRUTCHES -> 1.5
+                            MobilityProfile.VISUAL_IMPAIRMENT -> 1.2
+                            MobilityProfile.STANDARD -> 1.0
+                        }
+                        val simulatedDurationSec = (route.size * 10) * timeMultiplier
+                        val minutes = (simulatedDurationSec / 60).toInt().coerceAtLeast(1)
+
+                        // Bloc de gauche : Temps
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("⏱️ Temps estimé", color = Color.Gray, fontSize = 12.sp)
+                            Text("~ $minutes min", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
                     }
                 }
             }
