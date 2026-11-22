@@ -2,6 +2,9 @@ package com.example.lauzhack26_multiplatform.model
 
 import kotlinx.serialization.Serializable
 
+// Threshold: when resolved_votes reaches this number, the report is considered resolved and removed
+const val VOTE_THRESHOLD = 3
+
 @Serializable
 data class Report(
     val id: String,

@@ -3,6 +3,7 @@ package com.example.lauzhack26_multiplatform.server.routes
 import com.example.lauzhack26_multiplatform.model.Location
 import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportStatus
+import com.example.lauzhack26_multiplatform.model.VOTE_THRESHOLD
 import com.example.lauzhack26_multiplatform.model.Severity
 import com.example.lauzhack26_multiplatform.server.repository.ReportRepository
 import io.ktor.http.HttpHeaders
@@ -12,9 +13,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import java.time.Instant
 import java.time.ZoneOffset
-
-// Threshold: when resolved_votes reaches this number, the report is deleted
-private const val VOTE_THRESHOLD = 3
 
 fun Route.reportsRoutes(repository: ReportRepository) {
 

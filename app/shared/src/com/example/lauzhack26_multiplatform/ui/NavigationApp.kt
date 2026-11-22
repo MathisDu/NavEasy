@@ -41,6 +41,7 @@ import com.example.lauzhack26_multiplatform.model.MobilityProfile
 import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportStatus
+import com.example.lauzhack26_multiplatform.model.VOTE_THRESHOLD
 import com.example.lauzhack26_multiplatform.model.ReportType
 import com.example.lauzhack26_multiplatform.model.Severity
 
@@ -138,7 +139,6 @@ fun NavigationApp(
     var isDarkMode by remember { mutableStateOf(mapState.isDarkMode) }
     val palette = if (isDarkMode) DarkPalette else LightPalette
     val votedReports by viewModel.votedReports.collectAsState()
-    val osmFeatures by viewModel.osmFeatures.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var showJourneyPlanner by remember { mutableStateOf(false) }
@@ -1365,16 +1365,6 @@ fun NavigationApp(
                 isVoted = votedReports.contains(report.id)
             )
         }
-            // Report Details Dialog
-            selectedReport?.let { report ->
-                ReportDetailsDialog(
-                    report = report,
-                    onDismiss = { viewModel.closeReportDetails() },
-                    onResolve = {
-                        viewModel.voteOnReport(report.id)
-                    }
-                )
-            }
 
             // Error message toast
             errorMessage?.let { error ->
@@ -2549,7 +2539,7 @@ fun ReportDetailsDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Affected disabilities: ${report.disabilityTypes.joinToString(", ")}",
+                    text = "Affected: ${report.disabilityTypes.joinToString(", ")}",
                     fontFamily = InterFont,
                     fontSize = 12.sp,
                     color = palette.textSecondary
@@ -2572,7 +2562,7 @@ fun ReportDetailsDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "${report.resolvedVotes} / 5",
+                        text = "${report.resolvedVotes} / ${VOTE_THRESHOLD}",
                         fontFamily = InterFont,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
@@ -2589,23 +2579,32 @@ fun ReportDetailsDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (report.status == ReportStatus.ACTIVE) {
+                    val hasVoted = isVoted
                     Button(
                         onClick = onResolve,
+                        enabled = !hasVoted,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(44.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = palette.emeraldPrimary,
-                            contentColor = if (palette.isDark) Color(0xFF052E16) else Color.White
+                            containerColor = if (hasVoted)
+                                Color(0xFF9E9E9E)
+                            else
+                                palette.emeraldPrimary,
+
+                            contentColor = Color.White,
+
+                            disabledContainerColor = if (palette.isDark)
+                                Color(0xFF1B4332)
+                            else
+                                Color(0xFF9E9E9E),
+
+                            disabledContentColor = Color.White
                         ),
                         shape = RoundedCornerShape(10.dp)
-                        enabled = !isVoted,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                     ) {
-                        Text(if (isVoted) "✓ Voted" else "✓ Resolved")
                         Text(
-                            text = "Confirm Resolved",
+                            text = if (hasVoted) "✓ Voted" else "Confirm Resolved",
                             fontFamily = InterFont,
                             fontWeight = FontWeight.SemiBold
                         )
