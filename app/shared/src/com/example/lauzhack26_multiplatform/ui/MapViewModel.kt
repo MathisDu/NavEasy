@@ -276,37 +276,44 @@ class MapViewModel(
     }
 
     /**
-     * Filter obstacles based on the selected mobility profile.
-     * Returns only the obstacles that are problematic for the given profile.
+     * Filter obstacles for display on the Canvas based on the selected mobility profile.
+     * Returns both blockers (physically impassable) and warnings (informational) so the user
+     * can see all relevant obstacles, even if only blockers are sent to the routing service.
      */
     private fun filterFeaturesByProfile(
         allFeatures: List<OsmFeature>,
         profile: MobilityProfile
     ): List<OsmFeature> {
-        val problematicTypes = when (profile) {
+        val displayTypes = when (profile) {
             MobilityProfile.WHEELCHAIR -> setOf(
+                // Blockers
                 ObstacleType.STAIRS,
                 ObstacleType.WHEELCHAIR_RESTRICTED,
-                ObstacleType.BAD_SURFACE,
                 ObstacleType.BARRIER,
                 ObstacleType.HIGH_KERB,
                 ObstacleType.REVOLVING_DOOR,
+                // Warnings
+                ObstacleType.BAD_SURFACE,
                 ObstacleType.COBBLESTONE,
                 ObstacleType.KERB
             )
             MobilityProfile.CRUTCHES -> setOf(
+                // Blockers
                 ObstacleType.STAIRS,
+                ObstacleType.REVOLVING_DOOR,
+                // Warnings
                 ObstacleType.BAD_SURFACE,
                 ObstacleType.HIGH_KERB
             )
             MobilityProfile.VISUAL_IMPAIRMENT -> setOf(
+                // Warnings only — no blockers sent to ORS
                 ObstacleType.MISSING_TACTILE,
                 ObstacleType.SILENT_CROSSING,
                 ObstacleType.REVOLVING_DOOR
             )
             MobilityProfile.STANDARD -> emptySet()
         }
-        return allFeatures.filter { it.obstacleType in problematicTypes }
+        return allFeatures.filter { it.obstacleType in displayTypes }
     }
 
     private fun getLocationTracker(): LocationTracker? {
@@ -439,8 +446,8 @@ class MapViewModel(
             try {
                 val profile = _selectedProfile.value
 
-                // Generate automatic avoidance polygons from OSM obstacles incompatible with the profile
-                val osmPolygons = getIncompatibleOsmPolygons(profile, _allOsmFeatures.value)
+                // Generate avoidance polygons only for physically impassable OSM blockers
+                val osmPolygons = getBlockerOsmPolygons(profile, _allOsmFeatures.value)
 
                 // Generate manual avoidance polygons from user-placed centers
                 val manualPolygons = buildManualAvoidPolygons()
@@ -553,45 +560,40 @@ class MapViewModel(
     }
 
     /**
-     * Filter OSM features to keep only those incompatible with the given mobility profile,
-     * then generate small avoidance polygons (bounding boxes) around each obstacle.
+     * Generate avoidance polygons (bounding boxes) only for physically impassable obstacles
+     * (Blockers) that must be sent to OpenRouteService.
+     * Warnings like BAD_SURFACE or MISSING_TACTILE are excluded to avoid absurd detours,
+     * because ORS treats avoid_polygons as strict walls.
+     *
      * Returns a list of closed polygons (5 points each: top-left, top-right, bottom-right, bottom-left, top-left).
      */
-    private fun getIncompatibleOsmPolygons(
+    private fun getBlockerOsmPolygons(
         profile: MobilityProfile,
         features: List<OsmFeature>
     ): List<List<Location>> {
-        // Determine which obstacle types are incompatible with the profile
-        val incompatibleTypes = when (profile) {
+        // Blockers: physically impassable obstacles that ORS must route around
+        val blockerTypes = when (profile) {
             MobilityProfile.WHEELCHAIR -> setOf(
                 ObstacleType.STAIRS,
-                ObstacleType.WHEELCHAIR_RESTRICTED,
-                ObstacleType.BAD_SURFACE,
                 ObstacleType.BARRIER,
-                ObstacleType.HIGH_KERB,
                 ObstacleType.REVOLVING_DOOR,
-                ObstacleType.COBBLESTONE,
-                ObstacleType.KERB
+                ObstacleType.HIGH_KERB,
+                ObstacleType.WHEELCHAIR_RESTRICTED
             )
             MobilityProfile.CRUTCHES -> setOf(
                 ObstacleType.STAIRS,
-                ObstacleType.BAD_SURFACE,
-                ObstacleType.HIGH_KERB
-            )
-            MobilityProfile.VISUAL_IMPAIRMENT -> setOf(
-                ObstacleType.MISSING_TACTILE,
-                ObstacleType.SILENT_CROSSING,
                 ObstacleType.REVOLVING_DOOR
             )
+            MobilityProfile.VISUAL_IMPAIRMENT -> emptySet()
             MobilityProfile.STANDARD -> emptySet()
         }
 
-        // Filter features incompatible with the profile
-        val incompatibleFeatures = features.filter { it.obstacleType in incompatibleTypes }
+        // Filter features that are physically impassable blockers
+        val blockerFeatures = features.filter { it.obstacleType in blockerTypes }
 
-        // Generate bounding-box polygons around each incompatible obstacle
+        // Generate bounding-box polygons around each blocker obstacle
         val radiusDegrees = 0.0005 // ~50 meters
-        return incompatibleFeatures.map { feature ->
+        return blockerFeatures.map { feature ->
             val lat = feature.location.lat
             val lon = feature.location.lon
             listOf(
