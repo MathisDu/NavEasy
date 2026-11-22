@@ -54,7 +54,7 @@ fun NavigationApp(
     val userLocation by viewModel.userLocation.collectAsState()
     val showReportMode by viewModel.showReportMode.collectAsState()
     val selectedReport by viewModel.selectedReport.collectAsState()
-    val osmFeatures by viewModel.osmFeatures.collectAsState()
+    val osmFeatures by viewModel.filteredOsmFeatures.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var routeStart by remember { mutableStateOf<Location?>(null) }
@@ -93,12 +93,6 @@ fun NavigationApp(
         }
     }
 
-    // Reload OSM features when map center or zoom changes (utile si vous utilisez encore l'API réseau)
-    LaunchedEffect(mapState.centerLat, mapState.centerLon, mapState.zoom) {
-        if (!showProfileSelector) {
-            viewModel.loadStepsFromOverpass(mapState.centerLat, mapState.centerLon, mapState.zoom)
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Map
