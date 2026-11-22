@@ -17,6 +17,7 @@ import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportType
 import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.model.RouteResponse
+import com.example.lauzhack26_multiplatform.model.Severity
 import io.ktor.client.*
 import io.ktor.client.call.body
 import kotlin.math.PI
@@ -24,6 +25,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import com.example.lauzhack26_multiplatform.resources.Res
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -299,6 +301,14 @@ class MapViewModel(
 
     private val _isSearchingDestination = MutableStateFlow(false)
     val isSearchingDestination: StateFlow<Boolean> = _isSearchingDestination.asStateFlow()
+    private val _showReportMode = MutableStateFlow(false)
+    val showReportMode: StateFlow<Boolean> = _showReportMode.asStateFlow()
+
+    private val _selectedReport = MutableStateFlow<Report?>(null)
+    val selectedReport: StateFlow<Report?> = _selectedReport.asStateFlow()
+
+    private val _osmFeatures = MutableStateFlow<List<OsmFeature>>(emptyList())
+    val osmFeatures: StateFlow<List<OsmFeature>> = _osmFeatures.asStateFlow()
 
     fun setProfile(profile: MobilityProfile) {
         _selectedProfile.value = profile
@@ -315,7 +325,7 @@ class MapViewModel(
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
-                    _errorMessage.value = "Erreur chargement signalements: ${e.message}"
+                    _errorMessage.value = "Error loading reports: ${e.message}"
                 } else {
                     throw e
                 }
@@ -325,11 +335,11 @@ class MapViewModel(
         }
     }
 
-    fun addReport(type: ReportType, description: String, location: Location) {
+    fun addReport(category: String, description: String, location: Location, disabilityTypes: List<String>, severity: Severity) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val request = ReportRequest(type, description, location)
+                val request = ReportRequest(category, description, location, disabilityTypes, severity)
                 val response = httpClient.post("$serverUrl/api/reports") {
                     contentType(ContentType.Application.Json)
                     setBody(request)
@@ -339,7 +349,7 @@ class MapViewModel(
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
-                    _errorMessage.value = "Erreur ajout signalement: ${e.message}"
+                    _errorMessage.value = "Error adding report: ${e.message}"
                 } else {
                     throw e
                 }
@@ -373,11 +383,11 @@ class MapViewModel(
                     } catch (_: Exception) {
                         "<unable to read error>"
                     }
-                    _errorMessage.value = "Erreur calcul itinéraire (${response.status}): $errorBody"
+                    _errorMessage.value = "Error calculating route (${response.status}): $errorBody"
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
-                    _errorMessage.value = "Erreur: ${e.message}"
+                    _errorMessage.value = "Error: ${e.message}"
                 } else {
                     throw e
                 }
@@ -387,18 +397,66 @@ class MapViewModel(
         }
     }
 
+    fun clearRoute() {
+        _route.value = emptyList()
+    }
+
+    fun enterReportMode() {
+        _showReportMode.value = true
+    }
+
+    fun exitReportMode() {
+        _showReportMode.value = false
+    }
+
     fun openReportForm(location: Location) {
         _reportLocation.value = location
         _showReportForm.value = true
+        _showReportMode.value = false
     }
 
     fun closeReportForm() {
         _showReportForm.value = false
         _reportLocation.value = null
+        _showReportMode.value = false
     }
 
     fun dismissError() {
         _errorMessage.value = null
+    }
+
+    fun selectReport(report: Report) {
+        _selectedReport.value = report
+    }
+
+    fun closeReportDetails() {
+        _selectedReport.value = null
+    }
+
+    fun voteOnReport(reportId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val response = httpClient.patch("$serverUrl/api/reports/$reportId") {
+                    contentType(ContentType.Application.Json)
+                }
+                if (response.status == HttpStatusCode.OK) {
+                    loadReports()
+                    // Update the selected report if it's still open
+                    _selectedReport.value?.let { current ->
+                        if (current.id == reportId) {
+                            _selectedReport.value = response.body<Report>()
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _errorMessage.value = "Error voting: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun toggleAvoidMode() {
@@ -632,7 +690,7 @@ class MapViewModel(
 
             val ref = tags["ref"]?.jsonPrimitive?.content ?: ""
             val name = tags["name"]?.jsonPrimitive?.content ?: ""
-            val description = if (name.isNotEmpty()) name else if (ref.isNotEmpty()) "Escalier (ref: $ref)" else "Escalier"
+            val description = if (name.isNotEmpty()) name else if (ref.isNotEmpty()) "Stairs (ref: $ref)" else "Stairs"
 
             OsmFeature(
                 location = Location(lat = lat, lon = lon),
@@ -641,8 +699,17 @@ class MapViewModel(
             )
         }
     }
+    @Serializable
+    data class ReportRequest(
+        val category: String,
+        val description: String,
+        val location: Location,
+        val disabilityTypes: List<String>,
+        val severity: Severity = Severity.MEDIUM
+    )
 
 }
+
 
 @Serializable
 data class OverpassQueryRequest(val data: String)

@@ -1,6 +1,7 @@
 package com.example.lauzhack26_multiplatform.server.service
 
 import com.example.lauzhack26_multiplatform.model.*
+import com.example.lauzhack26_multiplatform.server.repository.ReportRepository
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -8,6 +9,7 @@ import io.ktor.http.*
 import kotlinx.serialization.json.*
 
 class OpenRouteServiceService(
+    private val repository: ReportRepository,
     private val httpClient: HttpClient
 ) {
 
@@ -18,7 +20,18 @@ class OpenRouteServiceService(
             throw IllegalStateException("ORS_API_KEY environment variable is not set. Set it to enable routing via OpenRouteService.")
         }
 
-        val allAvoidPolygonCoordinates = request.avoidPolygons
+        // 1. Récupération des obstacles signalés incompatibles avec le profil
+        val allReports = repository.getAll()
+        val incompatibleReports = allReports.filter { report ->
+            val reportType = try { ReportType.valueOf(report.category) } catch (e: IllegalArgumentException) { null }
+            reportType != null && request.profile.incompatibleReportTypes.contains(reportType)
+        }
+
+        // 2. Génération des polygones d'évitement automatiques (carrés autour des obstacles)
+        val autoAvoidPolygons = buildObstaclePolygons(incompatibleReports)
+
+        // 3. Fusion avec les polygones dessinés manuellement par l'utilisateur dans la requête
+        val allAvoidPolygonCoordinates = request.avoidPolygons + autoAvoidPolygons
 
         val orsProfile = request.profile.orsProfile
 
@@ -30,9 +43,9 @@ class OpenRouteServiceService(
             put("profile", orsProfile)
             put("format", "geojson")
 
+            // Construction correcte du GeoJSON pour ORS (Polygon ou MultiPolygon)
             if (allAvoidPolygonCoordinates.isNotEmpty()) {
                 put("options", buildJsonObject {
-                    // OpenRouteService expects a GeoJSON Polygon or MultiPolygon object
                     if (allAvoidPolygonCoordinates.size == 1) {
                         put("avoid_polygons", buildJsonObject {
                             put("type", "Polygon")
@@ -45,13 +58,10 @@ class OpenRouteServiceService(
                             })
                         })
                     } else {
-                        // GeoJSON MultiPolygon: coordinates is an array of polygons,
-                        // each polygon is an array of linear rings, each ring is an array of [lon, lat]
                         put("avoid_polygons", buildJsonObject {
                             put("type", "MultiPolygon")
                             put("coordinates", buildJsonArray {
                                 for (polygon in allAvoidPolygonCoordinates) {
-                                    // Each polygon is wrapped in its own array (linear ring level)
                                     add(buildJsonArray {
                                         add(buildJsonArray {
                                             for (coord in polygon) {
@@ -76,7 +86,6 @@ class OpenRouteServiceService(
         if (response.status == HttpStatusCode.OK) {
             val json = response.body<JsonElement>()
 
-            // Extract coordinates from GeoJSON LineString
             val coordinates = parseCoordinates(json)
             val distance = parseDistance(json)
             val duration = parseDuration(json)
@@ -87,7 +96,6 @@ class OpenRouteServiceService(
                 durationSeconds = duration
             )
         } else {
-            // Read the error body to include the actual ORS error message
             val errorBody = try {
                 response.body<String>()
             } catch (_: Exception) {
@@ -97,16 +105,32 @@ class OpenRouteServiceService(
         }
     }
 
+    /**
+     * Convertit les signalements en listes de coordonnées (polygones d'évitement).
+     */
+    private fun buildObstaclePolygons(reports: List<Report>): List<List<Location>> {
+        val radiusDegrees = 0.0005 // ~50 meters buffer around each obstacle
+        return reports.map { report ->
+            val lat = report.location.lat
+            val lon = report.location.lon
+            listOf(
+                Location(lat = lat - radiusDegrees, lon = lon - radiusDegrees),
+                Location(lat = lat - radiusDegrees, lon = lon + radiusDegrees),
+                Location(lat = lat + radiusDegrees, lon = lon + radiusDegrees),
+                Location(lat = lat + radiusDegrees, lon = lon - radiusDegrees),
+                Location(lat = lat - radiusDegrees, lon = lon - radiusDegrees) // Fermeture du polygone
+            )
+        }
+    }
+
     private fun parseCoordinates(json: JsonElement): List<Location> {
         val routes = json.jsonObject["routes"]?.jsonArray ?: return emptyList()
         if (routes.isEmpty()) return emptyList()
 
         val route = routes[0].jsonObject
 
-        // Check if geometry is a GeoJSON object or an encoded polyline string
         val geometry = route["geometry"]
         if (geometry is JsonObject) {
-            // GeoJSON format: geometry.coordinates is an array of [lon, lat]
             val coordinates = geometry["coordinates"]?.jsonArray ?: return emptyList()
             return coordinates.mapNotNull { coord ->
                 val arr = coord.jsonArray
@@ -117,7 +141,6 @@ class OpenRouteServiceService(
                 } else null
             }
         } else if (geometry is JsonPrimitive && geometry.isString) {
-            // Encoded polyline format (Polyline6 encoding used by ORS)
             val encoded = geometry.content
             return decodePolyline6(encoded)
         }
@@ -137,7 +160,6 @@ class OpenRouteServiceService(
 
         var i = 0
         while (i < len) {
-            // Decode latitude
             var result = 1
             var shift = 0
             var b: Int
@@ -148,12 +170,8 @@ class OpenRouteServiceService(
                 result += b shl shift
                 shift += 5
             } while (b >= 0x1F)
-            // Python: lat += (~result >> 1) if (result & 1) != 0 else (result >> 1)
-            // ~result in Python = result.inv() in Kotlin (both are two's complement NOT)
-            // >> in Python is arithmetic shift = shr in Kotlin
             lat += if ((result and 1) != 0) (result.inv()).shr(1) else (result shr 1)
 
-            // Decode longitude
             result = 1
             shift = 0
             do {
@@ -163,7 +181,6 @@ class OpenRouteServiceService(
                 result += b shl shift
                 shift += 5
             } while (b >= 0x1F)
-            // Python: lng += ~(result >> 1) if (result & 1) != 0 else (result >> 1)
             lng += if ((result and 1) != 0) (result shr 1).inv() else (result shr 1)
 
             coordinates.add(Location(lat = lat * 1e-5, lon = lng * 1e-5))

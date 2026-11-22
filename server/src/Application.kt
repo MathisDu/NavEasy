@@ -1,5 +1,7 @@
 package com.example.lauzhack26_multiplatform.server
 
+import com.example.lauzhack26_multiplatform.server.config.SupabaseConfig
+import com.example.lauzhack26_multiplatform.server.repository.SupabaseReportRepository
 import com.example.lauzhack26_multiplatform.server.repository.InMemoryReportRepository
 import com.example.lauzhack26_multiplatform.server.routes.nominatimRoutes
 import com.example.lauzhack26_multiplatform.server.routes.overpassRoutes
@@ -46,7 +48,20 @@ fun Application.module() {
         json()
     }
 
-    val reportRepository = InMemoryReportRepository()
+    // Read Supabase REST API credentials from environment variables
+    val supabaseUrl = System.getenv("SUPABASE_URL")
+        ?: throw IllegalStateException("SUPABASE_URL environment variable is not set. " +
+            "Set it to your Supabase project URL, e.g.: https://your-ref.supabase.co")
+    val supabaseKey = System.getenv("SUPABASE_ANON_KEY")
+        ?: throw IllegalStateException("SUPABASE_ANON_KEY environment variable is not set. " +
+            "Set it to your Supabase publishable (anon) API key, e.g.: sb_publishable_...")
+
+    val supabaseConfig = SupabaseConfig(
+        projectUrl = supabaseUrl,
+        apiKey = supabaseKey
+    )
+
+    val reportRepository = SupabaseReportRepository(supabaseConfig)
     val httpClient = HttpClient(CIO) {
         install(ClientContentNegotiation) {
             json()

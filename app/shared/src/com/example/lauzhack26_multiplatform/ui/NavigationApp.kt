@@ -27,7 +27,10 @@ import com.example.lauzhack26_multiplatform.model.Location
 import com.example.lauzhack26_multiplatform.model.MobilityProfile
 import com.example.lauzhack26_multiplatform.model.NominatimSearchResult
 import com.example.lauzhack26_multiplatform.model.OsmFeature
+import com.example.lauzhack26_multiplatform.model.Report
+import com.example.lauzhack26_multiplatform.model.ReportStatus
 import com.example.lauzhack26_multiplatform.model.ReportType
+import com.example.lauzhack26_multiplatform.model.Severity
 
 @Composable
 fun NavigationApp(
@@ -47,13 +50,16 @@ fun NavigationApp(
     val isSearchingDestination by viewModel.isSearchingDestination.collectAsState()
     val avoidMode by viewModel.avoidMode.collectAsState()
     val avoidPolygonCenters by viewModel.avoidPolygonCenters.collectAsState()
-    val osmFeatures by viewModel.filteredOsmFeatures.collectAsState()
     val isCentering by viewModel.isCentering.collectAsState()
     val userLocation by viewModel.userLocation.collectAsState()
+    val showReportMode by viewModel.showReportMode.collectAsState()
+    val selectedReport by viewModel.selectedReport.collectAsState()
+    val osmFeatures by viewModel.osmFeatures.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var routeStart by remember { mutableStateOf<Location?>(null) }
     var routeEnd by remember { mutableStateOf<Location?>(null) }
+    var showRouteInput by remember { mutableStateOf(false) }
     var selectedFeature by remember { mutableStateOf<OsmFeature?>(null) }
 
     // Start search state
@@ -87,6 +93,13 @@ fun NavigationApp(
         }
     }
 
+    // Reload OSM features when map center or zoom changes (utile si vous utilisez encore l'API réseau)
+    LaunchedEffect(mapState.centerLat, mapState.centerLon, mapState.zoom) {
+        if (!showProfileSelector) {
+            viewModel.loadStepsFromOverpass(mapState.centerLat, mapState.centerLon, mapState.zoom)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Map
         OsmMap(
@@ -104,11 +117,39 @@ fun NavigationApp(
                 canvasSizeForFit = size
             },
             onLocationClick = { location ->
-                if (!showProfileSelector) {
-                    if (avoidMode) {
-                        viewModel.addAvoidPolygonAt(location)
+                if (showProfileSelector) {
+                    // Do nothing while profile selector is shown
+                } else if (showReportMode) {
+                    // User is in report mode: click picks the location and opens the form
+                    viewModel.openReportForm(location)
+                } else if (showRouteInput) {
+                    if (routeStart == null) {
+                        routeStart = location
+                    } else if (routeEnd == null) {
+                        routeEnd = location
+                        routeStart?.let { start ->
+                            viewModel.calculateRoute(start, routeEnd!!)
+                        }
+                        showRouteInput = false
+                        routeStart = null
+                        routeEnd = null
+                    }
+                } else {
+                    // Check if the tap is near an existing report marker
+                    val tappedReport = reports.find { report ->
+                        val dx = report.location.lat - location.lat
+                        val dy = report.location.lon - location.lon
+                        val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+                        distance < 0.001 // ~100m threshold
+                    }
+                    if (tappedReport != null) {
+                        viewModel.selectReport(tappedReport)
                     } else {
-                        viewModel.openReportForm(location)
+                        if (avoidMode) {
+                            viewModel.addAvoidPolygonAt(location)
+                        } else {
+                            viewModel.openReportForm(location)
+                        }
                     }
                 }
             }
@@ -135,7 +176,7 @@ fun NavigationApp(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Choisissez votre profil de mobilité",
+                    text = "Choose your mobility profile",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.Gray
                 )
@@ -190,7 +231,7 @@ fun NavigationApp(
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Appuyez sur la carte pour signaler un obstacle",
+                    text = "Tap the map to report an obstacle",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
@@ -217,12 +258,41 @@ fun NavigationApp(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
+                        onClick = {
+                            showRouteInput = !showRouteInput
+                            if (!showRouteInput) {
+                                viewModel.clearRoute()
+                                routeStart = null
+                                routeEnd = null
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (showRouteInput) Color(0xFF1565C0) else Color.LightGray
+                        )
+                    ) {
+                        Text(if (showRouteInput) "Cancel" else "Route")
+                    }
+                    Button(
                         onClick = { viewModel.toggleAvoidMode() },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (avoidMode) Color(0xFFD32F2F) else Color(0xFF9C27B0)
                         )
                     ) {
                         Text(if (avoidMode) "⛔ Éviter" else "⭕ Éviter")
+                    }
+                    Button(
+                        onClick = {
+                            if (showReportMode) {
+                                viewModel.exitReportMode()
+                            } else {
+                                viewModel.enterReportMode()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (showReportMode) Color.Red else Color(0xFFFF5722)
+                        )
+                    ) {
+                        Text(if (showReportMode) "Cancel" else "Report")
                     }
                     Button(
                         onClick = { mapState.isDarkMode = !mapState.isDarkMode },
@@ -234,8 +304,23 @@ fun NavigationApp(
                         onClick = { showProfileSelector = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
                     ) {
-                        Text("Profil")
+                        Text("Profile")
                     }
+                }
+            }
+
+            if (showRouteInput) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 60.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 4.dp
+                ) {
+                    Text(
+                        text = if (routeStart == null) "Click for start point" else "Click for destination",
+                        modifier = Modifier.padding(12.dp)
+                    )
                 }
             }
 
@@ -345,6 +430,23 @@ fun NavigationApp(
                     }
                 }
             }
+
+            if (showReportMode) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 60.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 4.dp,
+                    color = Color(0xFFFFEBEE)
+                ) {
+                    Text(
+                        text = "📍 Click on the map to place the obstacle",
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
         }
 
         // Report Form
@@ -352,8 +454,19 @@ fun NavigationApp(
             ReportFormDialog(
                 location = reportLocation!!,
                 onDismiss = { viewModel.closeReportForm() },
-                onSubmit = { type, description ->
-                    viewModel.addReport(type, description, reportLocation!!)
+                onSubmit = { category, description, disabilityTypes, severity ->
+                    viewModel.addReport(category, description, reportLocation!!, disabilityTypes, severity)
+                }
+            )
+        }
+
+        // Report Details Dialog
+        selectedReport?.let { report ->
+            ReportDetailsDialog(
+                report = report,
+                onDismiss = { viewModel.closeReportDetails() },
+                onResolve = {
+                    viewModel.voteOnReport(report.id)
                 }
             )
         }
@@ -383,7 +496,7 @@ fun NavigationApp(
                         maxLines = 5
                     )
                     TextButton(onClick = { viewModel.dismissError() }) {
-                        Text("Fermer")
+                        Text("Close")
                     }
                 }
             }
@@ -459,7 +572,7 @@ fun NavigationApp(
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(horizontalArrangement = Arrangement.End) {
                             TextButton(onClick = { selectedFeature = null }) {
-                                Text("✕ Fermer")
+                                Text("✕ Close")
                             }
                         }
                     }
@@ -506,9 +619,9 @@ fun ProfileCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = when (profile) {
-                    MobilityProfile.WHEELCHAIR -> "Fauteuil"
-                    MobilityProfile.CRUTCHES -> "Béquilles"
-                    MobilityProfile.VISUAL_IMPAIRMENT -> "Visuel"
+                    MobilityProfile.WHEELCHAIR -> "Wheelchair"
+                    MobilityProfile.CRUTCHES -> "Crutches"
+                    MobilityProfile.VISUAL_IMPAIRMENT -> "Visual"
                     MobilityProfile.STANDARD -> "Standard"
                 },
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
@@ -521,10 +634,13 @@ fun ProfileCard(
 fun ReportFormDialog(
     location: Location,
     onDismiss: () -> Unit,
-    onSubmit: (ReportType, String) -> Unit
+    onSubmit: (String, String, List<String>, Severity) -> Unit
 ) {
     var selectedType by remember { mutableStateOf(ReportType.STAIRS) }
     var description by remember { mutableStateOf("") }
+    var selectedSeverity by remember { mutableStateOf(Severity.MEDIUM) }
+    val allDisabilityTypes = listOf("wheelchair", "blind", "crutches", "elderly", "parent-child")
+    var selectedDisabilityTypes by remember { mutableStateOf(listOf<String>()) }
 
     Box(
         modifier = Modifier
@@ -536,14 +652,14 @@ fun ReportFormDialog(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(32.dp)
-                .wrapContentHeight()
-                .wrapContentWidth(),
+                .fillMaxWidth(0.85f)
+                .fillMaxHeight(0.85f),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = "Nouveau signalement",
+                    text = "New report",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -554,87 +670,368 @@ fun ReportFormDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Type d'obstacle:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                // Scrollable form fields
                 Column(
-                    modifier = Modifier.height(200.dp).verticalScroll(rememberScrollState())
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    val reportTypes = ReportType.entries.filter { it != ReportType.RAMP }
-                    for (i in reportTypes.indices step 2) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            reportTypes.getOrNull(i)?.let { type ->
-                                Card(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { selectedType = type },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (type == selectedType) Color(0xFFFFEBEE) else Color.White
-                                    ),
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (type == selectedType) Color.Red else Color.LightGray
-                                    )
-                                ) {
-                                    Text(
-                                        text = type.label,
-                                        modifier = Modifier.padding(8.dp),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+                    Text("Category:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                    Column(
+                        modifier = Modifier.height(150.dp)
+                    ) {
+                        val reportTypes = ReportType.entries.filter { it != ReportType.RAMP }
+                        for (i in reportTypes.indices step 2) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                reportTypes.getOrNull(i)?.let { type ->
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { selectedType = type },
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (type == selectedType) Color(0xFFFFEBEE) else Color.White
+                                        ),
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (type == selectedType) Color.Red else Color.LightGray
+                                        )
+                                    ) {
+                                        Text(
+                                            text = type.label,
+                                            modifier = Modifier.padding(8.dp),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                                reportTypes.getOrNull(i + 1)?.let { type ->
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { selectedType = type },
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (type == selectedType) Color(0xFFFFEBEE) else Color.White
+                                        ),
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (type == selectedType) Color.Red else Color.LightGray
+                                        )
+                                    ) {
+                                        Text(
+                                            text = type.label,
+                                            modifier = Modifier.padding(8.dp),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
                                 }
                             }
-                            reportTypes.getOrNull(i + 1)?.let { type ->
-                                Card(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { selectedType = type },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (type == selectedType) Color(0xFFFFEBEE) else Color.White
-                                    ),
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (type == selectedType) Color.Red else Color.LightGray
-                                    )
-                                ) {
-                                    Text(
-                                        text = type.label,
-                                        modifier = Modifier.padding(8.dp),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
+                            if (i + 2 < reportTypes.size) {
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
-                        }
-                        if (i + 2 < reportTypes.size) {
-                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Affected disability types:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                    Column {
+                        for (dt in allDisabilityTypes) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (selectedDisabilityTypes.contains(dt)) {
+                                            selectedDisabilityTypes = selectedDisabilityTypes - dt
+                                        } else {
+                                            selectedDisabilityTypes = selectedDisabilityTypes + dt
+                                        }
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = selectedDisabilityTypes.contains(dt),
+                                    onCheckedChange = {
+                                        if (it) {
+                                            selectedDisabilityTypes = selectedDisabilityTypes + dt
+                                        } else {
+                                            selectedDisabilityTypes = selectedDisabilityTypes - dt
+                                        }
+                                    }
+                                )
+                                Text(
+                                    text = dt,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Severity:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (sev in Severity.entries) {
+                            val label = when (sev) {
+                                Severity.LOW -> "Low"
+                                Severity.MEDIUM -> "Medium"
+                                Severity.HIGH -> "High"
+                            }
+                            Card(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { selectedSeverity = sev },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (sev == selectedSeverity) Color(0xFFFFEBEE) else Color.White
+                                ),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (sev == selectedSeverity) Color.Red else Color.LightGray
+                                )
+                            ) {
+                                Text(
+                                    text = label,
+                                    modifier = Modifier.padding(8.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Description (optional):", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                    BasicTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Description (optionnel):", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                BasicTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-                        .padding(8.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
+                // Fixed action buttons at the bottom
+                if (selectedDisabilityTypes.isEmpty()) {
+                    Text(
+                        text = "⚠ Please select at least one affected disability type to enable submission.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Red,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = { onSubmit(selectedType, description) },
+                        onClick = {
+                            if (selectedDisabilityTypes.isEmpty()) {
+                                return@Button
+                            }
+                            onSubmit(selectedType.name, description, selectedDisabilityTypes, selectedSeverity)
+                        },
+                        enabled = selectedDisabilityTypes.isNotEmpty(),
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
-                        Text("Signaler")
+                        Text("Send Report")
                     }
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Annuler")
+                        Text("Cancel")
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReportDetailsDialog(
+    report: Report,
+    onDismiss: () -> Unit,
+    onResolve: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0x80000000))
+            .clickable(onClick = onDismiss)
+    ) {
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(32.dp)
+                .wrapContentHeight()
+                .wrapContentWidth()
+                .fillMaxWidth(0.85f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                // Title and status badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = report.title,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.weight(1f)
+                    )
+                    val statusColor = when (report.status) {
+                        ReportStatus.ACTIVE -> Color(0xFFFF9800)
+                        ReportStatus.RESOLVED -> Color(0xFF4CAF50)
+                    }
+                    val statusLabel = when (report.status) {
+                        ReportStatus.ACTIVE -> "Active"
+                        ReportStatus.RESOLVED -> "Resolved"
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = statusColor.copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = statusColor
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Category
+                Text(
+                    text = "Category: ${report.category}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                // Severity
+                val severityLabel = when (report.severity) {
+                    Severity.LOW -> "Low"
+                    Severity.MEDIUM -> "Medium"
+                    Severity.HIGH -> "High"
+                }
+                val severityColor = when (report.severity) {
+                    Severity.LOW -> Color(0xFF4CAF50)
+                    Severity.MEDIUM -> Color(0xFFFF9800)
+                    Severity.HIGH -> Color.Red
+                }
+                Text(
+                    text = "Severity: $severityLabel",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = severityColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+
+                // Description
+                report.description.takeIf { it.isNotBlank() }?.let { desc ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Description:",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                // Disability types
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Affected disabilities: ${report.disabilityTypes.joinToString(", ")}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+
+                // Location
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Lat: ${report.location.lat}, Lng: ${report.location.lon}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+
+                // Created at
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Created: ${report.createdAt.take(10)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+
+                // Vote section
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Vote on this report:",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Vote counts
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "${report.resolvedVotes}",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CAF50)
+                        )
+                    )
+                    Text(
+                        text = "Resolved",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "5 votes needed to mark as resolved",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Action buttons
+                if (report.status == ReportStatus.ACTIVE) {
+                    Button(
+                        onClick = onResolve,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        Text("✓ Resolved")
+                    }
+                } else {
+                    Text(
+                        text = "This report is resolved.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Close")
                 }
             }
         }
