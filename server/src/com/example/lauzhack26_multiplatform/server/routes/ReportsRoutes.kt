@@ -5,6 +5,7 @@ import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportStatus
 import com.example.lauzhack26_multiplatform.model.Severity
 import com.example.lauzhack26_multiplatform.server.repository.ReportRepository
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -33,7 +34,7 @@ fun Route.reportsRoutes(repository: ReportRepository) {
             val report = Report(
                 id = "",
                 userId = null,
-                title = reportRequest.title,
+                title = reportRequest.category,
                 description = reportRequest.description,
                 category = reportRequest.category,
                 location = reportRequest.location,
@@ -90,9 +91,8 @@ fun Route.reportsRoutes(repository: ReportRepository) {
 // Separate request class to avoid sending the id from the client
 @kotlinx.serialization.Serializable
 data class ReportRequest(
-    val title: String,
-    val description: String,
     val category: String,
+    val description: String,
     val location: Location,
     val disabilityTypes: List<String>,
     val severity: Severity = Severity.MEDIUM

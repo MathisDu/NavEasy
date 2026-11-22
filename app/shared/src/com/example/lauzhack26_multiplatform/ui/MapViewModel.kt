@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -61,6 +62,9 @@ class MapViewModel(
     private val _reportLocation = MutableStateFlow<Location?>(null)
     val reportLocation: StateFlow<Location?> = _reportLocation.asStateFlow()
 
+    private val _showReportMode = MutableStateFlow(false)
+    val showReportMode: StateFlow<Boolean> = _showReportMode.asStateFlow()
+
     private val _selectedReport = MutableStateFlow<Report?>(null)
     val selectedReport: StateFlow<Report?> = _selectedReport.asStateFlow()
 
@@ -82,7 +86,7 @@ class MapViewModel(
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
-                    _errorMessage.value = "Erreur chargement signalements: ${e.message}"
+                    _errorMessage.value = "Error loading reports: ${e.message}"
                 } else {
                     throw e
                 }
@@ -92,11 +96,11 @@ class MapViewModel(
         }
     }
 
-    fun addReport(title: String, category: String, description: String, location: Location, disabilityTypes: List<String>, severity: Severity) {
+    fun addReport(category: String, description: String, location: Location, disabilityTypes: List<String>, severity: Severity) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val request = ReportRequest(title, category, description, location, disabilityTypes, severity)
+                val request = ReportRequest(category, description, location, disabilityTypes, severity)
                 val response = httpClient.post("$serverUrl/api/reports") {
                     contentType(ContentType.Application.Json)
                     setBody(request)
@@ -106,7 +110,7 @@ class MapViewModel(
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
-                    _errorMessage.value = "Erreur ajout signalement: ${e.message}"
+                    _errorMessage.value = "Error adding report: ${e.message}"
                 } else {
                     throw e
                 }
@@ -137,11 +141,11 @@ class MapViewModel(
                     } catch (_: Exception) {
                         "<unable to read error>"
                     }
-                    _errorMessage.value = "Erreur calcul itinéraire (${response.status}): $errorBody"
+                    _errorMessage.value = "Error calculating route (${response.status}): $errorBody"
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
-                    _errorMessage.value = "Erreur: ${e.message}"
+                    _errorMessage.value = "Error: ${e.message}"
                 } else {
                     throw e
                 }
@@ -155,14 +159,24 @@ class MapViewModel(
         _route.value = emptyList()
     }
 
+    fun enterReportMode() {
+        _showReportMode.value = true
+    }
+
+    fun exitReportMode() {
+        _showReportMode.value = false
+    }
+
     fun openReportForm(location: Location) {
         _reportLocation.value = location
         _showReportForm.value = true
+        _showReportMode.value = false
     }
 
     fun closeReportForm() {
         _showReportForm.value = false
         _reportLocation.value = null
+        _showReportMode.value = false
     }
 
     fun dismissError() {
@@ -196,7 +210,7 @@ class MapViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur de vote: ${e.message}"
+                _errorMessage.value = "Error voting: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -292,7 +306,7 @@ class MapViewModel(
 
             val ref = tags["ref"]?.jsonPrimitive?.content ?: ""
             val name = tags["name"]?.jsonPrimitive?.content ?: ""
-            val description = if (name.isNotEmpty()) name else if (ref.isNotEmpty()) "Escalier (ref: $ref)" else "Escalier"
+            val description = if (name.isNotEmpty()) name else if (ref.isNotEmpty()) "Stairs (ref: $ref)" else "Stairs"
 
             OsmFeature(
                 location = Location(lat = lat, lon = lon),
@@ -301,8 +315,8 @@ class MapViewModel(
             )
         }
     }
+    @Serializable
     data class ReportRequest(
-        val title: String,
         val category: String,
         val description: String,
         val location: Location,

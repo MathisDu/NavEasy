@@ -6,14 +6,14 @@ import kotlinx.serialization.Serializable
 enum class ReportType(
     val label: String
 ) {
-    STAIRS("Escaliers / Marches"),
-    STEPS("Paliers"),
-    CURB("Trottoir sans accotement"),
-    CONSTRUCTION("Travaux sur trottoir"),
-    NARROW_PASSAGE("Passage étroit"),
-    FLOORS("Revêtement instable"),
-    UNPAVED_SURFACE("Surface non pavée"),
-    POOR_LIGHTING("Éclairage insuffisant"),
-    RAMP("Rampe d'accès"),
-    OTHER("Autre")
+    STAIRS("Stairs / Steps"),
+    STEPS("Landings"),
+    CURB("Curb without ramp"),
+    CONSTRUCTION("Sidewalk construction"),
+    NARROW_PASSAGE("Narrow passage"),
+    FLOORS("Unstable surface"),
+    UNPAVED_SURFACE("Unpaved surface"),
+    POOR_LIGHTING("Poor lighting"),
+    RAMP("Access ramp"),
+    OTHER("Other")
 }
