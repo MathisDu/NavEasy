@@ -2,20 +2,14 @@ package com.example.lauzhack26_multiplatform.server.routes
 
 import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.server.service.OpenRouteServiceService
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.routing.post
-import io.ktor.server.routing.Route
+import io.ktor.server.routing.*
 
 fun Route.routeRoutes(orsService: OpenRouteServiceService) {
 
     post("/api/route") {
-        call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, "*")
-        call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "POST, OPTIONS")
-        call.response.headers.append(HttpHeaders.AccessControlAllowHeaders, "Content-Type")
-        
         val request = call.receive<RouteRequest>()
         try {
             val response = orsService.calculateRoute(request)

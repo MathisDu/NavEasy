@@ -8,7 +8,7 @@ enum class MobilityProfile(
     val incompatibleReportTypes: Set<ReportType>
 ) {
     WHEELCHAIR(
-        orsProfile = "wheelchair-push",
+        orsProfile = "wheelchair",
         incompatibleReportTypes = setOf(
             ReportType.STAIRS,
             ReportType.STEPS,

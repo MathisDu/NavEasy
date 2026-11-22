@@ -5,16 +5,10 @@ import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportStatus
 import com.example.lauzhack26_multiplatform.model.Severity
 import com.example.lauzhack26_multiplatform.server.repository.ReportRepository
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.patch
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.Route
+import io.ktor.server.routing.*
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -26,16 +20,13 @@ fun Route.reportsRoutes(repository: ReportRepository) {
     route("/api/reports") {
 
         get {
-            call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, "*")
-            call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "GET, POST, OPTIONS")
-            call.response.headers.append(HttpHeaders.AccessControlAllowHeaders, "Content-Type")
             val reports = repository.getAll()
             call.respond(reports)
         }
 
         post {
             call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, "*")
-            call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "GET, POST, DELETE, OPTIONS")
+            call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "GET, POST, PATCH, OPTIONS")
             call.response.headers.append(HttpHeaders.AccessControlAllowHeaders, "Content-Type")
             val reportRequest = call.receive<ReportRequest>()
             // Supabase generates the UUID automatically via gen_random_uuid()

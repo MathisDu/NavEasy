@@ -3,6 +3,7 @@ package com.example.lauzhack26_multiplatform.map
 import kotlin.math.PI
 import kotlin.math.atan
 import kotlin.math.exp
+import kotlin.math.ln
 import kotlin.math.sin
 
 /**
@@ -17,25 +18,6 @@ object MercatorProjection {
 
     private fun toRadians(degrees: Double): Double = degrees * DEG_TO_RAD
     private fun toDegrees(radians: Double): Double = radians * RAD_TO_DEG
-    private fun ln(x: Double): Double {
-        // Natural log approximation using exp inverse
-        var value = x
-        var result = 0.0
-        var term = 1.0
-        while (value > 1.0) {
-            value /= 2.0
-            result += 0.6931471805599453
-        }
-        // Taylor series for ln(1 + t) where t = value - 1
-        val t = value - 1.0
-        var tPower = t
-        for (i in 1..50) {
-            term = tPower * if (i % 2 == 0) -1.0 else 1.0 / i
-            result += term
-            tPower *= t
-        }
-        return result
-    }
 
     /**
      * Convert latitude to Y tile coordinate at a given zoom level.
@@ -44,14 +26,15 @@ object MercatorProjection {
         val latRad = toRadians(lat)
         val sinLat = sin(latRad)
         val y = 0.5 * ln((1.0 + sinLat) / (1.0 - sinLat))
-        return (TILE_SIZE * zoom) / (2.0 * PI) * (PI - y)
+        val scale = TILE_SIZE * (1 shl zoom) / (2.0 * PI)
+        return scale * (PI - y)
     }
 
     /**
      * Convert longitude to X tile coordinate at a given zoom level.
      */
     fun lonToX(lon: Double, zoom: Int): Double {
-        return (lon + 180.0) / 360.0 * TILE_SIZE * zoom
+        return (lon + 180.0) / 360.0 * TILE_SIZE * (1 shl zoom)
     }
 
     /**
@@ -67,8 +50,9 @@ object MercatorProjection {
      * Convert pixel coordinates back to latitude/longitude.
      */
     fun pixelToLocation(x: Double, y: Double, zoom: Int): Pair<Double, Double> {
-        val lon = (x / (TILE_SIZE * zoom)) * 360.0 - 180.0
-        val n = PI - 2.0 * PI * y / (TILE_SIZE * zoom)
+        val scale = TILE_SIZE * (1 shl zoom)
+        val lon = (x / scale) * 360.0 - 180.0
+        val n = PI - 2.0 * PI * y / scale
         val lat = toDegrees(atan(0.5 * (exp(n) - exp(-n))))
         return lat to lon
     }

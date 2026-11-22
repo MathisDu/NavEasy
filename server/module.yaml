@@ -11,6 +11,7 @@ dependencies:
   - $libs.logback.classic
   - $libs.ktor.server.content.negotiation
   - $libs.ktor.serialization.kotlinx.json
+  - $ktor.server.cors
 
 settings:
   ktor: enabled

@@ -15,12 +15,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.lauzhack26_multiplatform.map.MapState
 import com.example.lauzhack26_multiplatform.map.OsmMap
 import com.example.lauzhack26_multiplatform.model.Location
 import com.example.lauzhack26_multiplatform.model.MobilityProfile
+import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportStatus
 import com.example.lauzhack26_multiplatform.model.ReportType
@@ -39,14 +41,31 @@ fun NavigationApp(
     val showReportForm by viewModel.showReportForm.collectAsState()
     val reportLocation by viewModel.reportLocation.collectAsState()
     val selectedReport by viewModel.selectedReport.collectAsState()
+    val osmFeatures by viewModel.osmFeatures.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var routeStart by remember { mutableStateOf<Location?>(null) }
     var routeEnd by remember { mutableStateOf<Location?>(null) }
     var showRouteInput by remember { mutableStateOf(false) }
+    var selectedFeature by remember { mutableStateOf<OsmFeature?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadReports()
+    }
+
+    // Fit the map viewport when a new route is displayed
+    var canvasSizeForFit by remember { mutableStateOf<IntSize?>(null) }
+    LaunchedEffect(route) {
+        if (route.isNotEmpty() && canvasSizeForFit != null) {
+            mapState.fitRouteToViewport(route, canvasSizeForFit!!)
+        }
+    }
+
+    // Reload OSM features when map center or zoom changes
+    LaunchedEffect(mapState.centerLat, mapState.centerLon, mapState.zoom) {
+        if (!showProfileSelector) {
+            viewModel.loadStepsFromOverpass(mapState.centerLat, mapState.centerLon, mapState.zoom)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -56,6 +75,13 @@ fun NavigationApp(
             mapState = mapState,
             routeCoordinates = route,
             reportLocations = reports.map { it.location },
+            osmFeatures = osmFeatures,
+            onFeatureClick = { feature ->
+                selectedFeature = feature
+            },
+            onCanvasSizeReady = { size ->
+                canvasSizeForFit = size
+            },
             onLocationClick = { location ->
                 if (showProfileSelector) {
                     // Do nothing while profile selector is shown
@@ -204,6 +230,12 @@ fun NavigationApp(
                         Text(if (showRouteInput) "Annuler" else "Itinéraire")
                     }
                     Button(
+                        onClick = { mapState.isDarkMode = !mapState.isDarkMode },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
+                    ) {
+                        Text(if (mapState.isDarkMode) "☀️" else "🌙")
+                    }
+                    Button(
                         onClick = { showProfileSelector = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
                     ) {
@@ -255,17 +287,32 @@ fun NavigationApp(
 
         // Error message
         errorMessage?.let { error ->
-            Snackbar(
+            Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                action = {
+                    .padding(16.dp)
+                    .fillMaxWidth(0.9f),
+                shape = RoundedCornerShape(12.dp),
+                tonalElevation = 6.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = error,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        maxLines = 5
+                    )
                     TextButton(onClick = { viewModel.dismissError() }) {
                         Text("Fermer")
                     }
                 }
-            ) {
-                Text(error)
             }
         }
 
@@ -276,6 +323,50 @@ fun NavigationApp(
                     .align(Alignment.TopCenter)
                     .padding(16.dp)
             )
+        }
+
+        // OSM Feature Detail Modal
+        selectedFeature?.let { feature ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x80000000))
+                    .clickable(onClick = { selectedFeature = null })
+            ) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(32.dp)
+                        .wrapContentHeight()
+                        .wrapContentWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Text(
+                            text = "🪜 Escalier",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = feature.description,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Lat: ${feature.location.lat}, Lng: ${feature.location.lon}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { selectedFeature = null }) {
+                                Text("✕ Fermer")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
