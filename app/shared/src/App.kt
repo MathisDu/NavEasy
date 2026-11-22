@@ -76,8 +76,8 @@ fun App() {
             }
         } else {
             NavigationApp(
-                viewModel = viewModel!!,
-                mapState = mapState!!
+                viewModel = viewModel,
+                mapState = mapState
             )
         }
     }

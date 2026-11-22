@@ -74,7 +74,7 @@ fun NavigationApp(
     val userLocation by viewModel.userLocation.collectAsState()
     val showReportMode by viewModel.showReportMode.collectAsState()
     val selectedReport by viewModel.selectedReport.collectAsState()
-    val osmFeatures by viewModel.osmFeatures.collectAsState()
+    val osmFeatures by viewModel.filteredOsmFeatures.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var showJourneyPlanner by remember { mutableStateOf(false) }
