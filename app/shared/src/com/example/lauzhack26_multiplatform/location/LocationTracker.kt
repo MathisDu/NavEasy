@@ -15,5 +15,6 @@ expect class LocationTracker {
 
 /**
  * Creates a platform-specific LocationTracker instance.
+ * Returns null if the platform cannot provide location services.
  */
-expect fun createLocationTracker(): LocationTracker
+expect fun createLocationTracker(): LocationTracker?

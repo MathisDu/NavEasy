@@ -51,7 +51,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class MapViewModel(
     private val httpClient: HttpClient,
-    private val serverUrl: String = "http://localhost:8081"
+    private val serverUrl: String = "http://localhost:8081",
+    initialLocationTracker: LocationTracker? = null
 ) : ViewModel() {
 
     private val _selectedProfile = MutableStateFlow(MobilityProfile.WHEELCHAIR)
@@ -88,7 +89,7 @@ class MapViewModel(
     private val _userLocation = MutableStateFlow<Location?>(null)
     val userLocation: StateFlow<Location?> = _userLocation.asStateFlow()
 
-    private var locationTracker: LocationTracker? = null
+    private var locationTracker: LocationTracker? = initialLocationTracker
 
     // Avoid polygon mode state
     private val _avoidMode = MutableStateFlow(false)

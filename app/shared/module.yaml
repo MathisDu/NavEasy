@@ -21,6 +21,7 @@ dependencies:
 dependencies@android:
   - $compose.uiTooling
   - $libs.ktor.client.android
+  - $libs.play.services.location
 
 dependencies@iosArm64:
   - $libs.ktor.client.darwin

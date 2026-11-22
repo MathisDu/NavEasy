@@ -3,11 +3,15 @@ package com.example.lauzhack26_multiplatform.location
 import com.example.lauzhack26_multiplatform.model.Location
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlin.js.ExperimentalWasmJsInterop
+import kotlin.js.js
 
 /**
  * Top-level JS function that wraps navigator.geolocation.getCurrentPosition.
  * Takes a success callback (lat, lon) and an error callback, then invokes the browser API.
  */
+@OptIn(ExperimentalWasmJsInterop::class)
+@Suppress("UNUSED_PARAMETER")
 private fun requestGeolocationPosition(
     onSuccess: (Double, Double) -> Unit,
     onError: () -> Unit
@@ -49,4 +53,4 @@ actual class LocationTracker {
     }
 }
 
-actual fun createLocationTracker(): LocationTracker = LocationTracker()
+actual fun createLocationTracker(): LocationTracker? = LocationTracker()
