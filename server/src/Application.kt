@@ -67,7 +67,7 @@ fun Application.module() {
             json()
         }
     }
-    val orsService = OpenRouteServiceService(httpClient)
+    val orsService = OpenRouteServiceService(reportRepository, httpClient)
     val overpassService = OverpassService(httpClient)
     val nominatimService = NominatimService(httpClient)
 
