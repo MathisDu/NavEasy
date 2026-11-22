@@ -1,0 +1,1703 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-11-22T01:38:51Z",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "way/24303216",
+      "properties": {
+        "@id": "way/24303216",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "22",
+        "surface": "asphalt",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5629628,
+          46.5186586
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/24450634",
+      "properties": {
+        "@id": "way/24450634",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "7",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5649626,
+          46.5218881
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/30333700",
+      "properties": {
+        "@id": "way/30333700",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "12",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5628625,
+          46.5189759
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/30403005",
+      "properties": {
+        "@id": "way/30403005",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "ramp": "no",
+        "step_count": "29",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5645521,
+          46.5211128
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/32448682",
+      "properties": {
+        "@id": "way/32448682",
+        "highway": "steps",
+        "incline": "up",
+        "source": "survey",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5610544,
+          46.5227077
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/35544600",
+      "properties": {
+        "@id": "way/35544600",
+        "bicycle": "no",
+        "highway": "path",
+        "layer": "1",
+        "name": "La Méridienne",
+        "surface": "unhewn_cobblestone",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5671387,
+          46.5204676
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/35544601",
+      "properties": {
+        "@id": "way/35544601",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "layer": "1",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5682298,
+          46.5205424
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/35767761",
+      "properties": {
+        "@id": "way/35767761",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "layer": "1",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "asphalt",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5686256,
+          46.5204065
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/51316827",
+      "properties": {
+        "@id": "way/51316827",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "17",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.562197,
+          46.5181624
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/60728232",
+      "properties": {
+        "@id": "way/60728232",
+        "highway": "steps",
+        "lit": "no",
+        "surface": "compacted",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5695222,
+          46.5180243
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/60728234",
+      "properties": {
+        "@id": "way/60728234",
+        "access": "private",
+        "handrail": "yes",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5671503,
+          46.5180014
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/61964171",
+      "properties": {
+        "@id": "way/61964171",
+        "access": "private",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "20",
+        "surface": "concrete",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5670072,
+          46.5189775
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/72769806",
+      "properties": {
+        "@id": "way/72769806",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "metal",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5678547,
+          46.5186722
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/186641015",
+      "properties": {
+        "@id": "way/186641015",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "22",
+        "surface": "concrete",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5633788,
+          46.5183596
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/186641876",
+      "properties": {
+        "@id": "way/186641876",
+        "bridge": "yes",
+        "building": "roof",
+        "foot": "yes",
+        "layer": "2",
+        "lit": "yes",
+        "surface": "sett",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5683512,
+          46.52046
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/191883267",
+      "properties": {
+        "@id": "way/191883267",
+        "area": "yes",
+        "bridge": "yes",
+        "foot": "yes",
+        "highway": "pedestrian",
+        "layer": "2",
+        "surface": "sett",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5699385,
+          46.5203233
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/191883268",
+      "properties": {
+        "@id": "way/191883268",
+        "area": "yes",
+        "bridge": "yes",
+        "foot": "yes",
+        "highway": "pedestrian",
+        "layer": "2",
+        "surface": "sett",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5703163,
+          46.5203262
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201734762",
+      "properties": {
+        "@id": "way/201734762",
+        "highway": "path",
+        "surface": "sett",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5678055,
+          46.5202201
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201734765",
+      "properties": {
+        "@id": "way/201734765",
+        "highway": "path",
+        "surface": "sett",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5675076,
+          46.5201778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201735047",
+      "properties": {
+        "@id": "way/201735047",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "25",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5661083,
+          46.5203669
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201735277",
+      "properties": {
+        "@id": "way/201735277",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "24",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5644512,
+          46.5197295
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201760458",
+      "properties": {
+        "@id": "way/201760458",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "ramp": "yes",
+        "ramp:bicycle": "yes",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5682629,
+          46.5210269
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201760459",
+      "properties": {
+        "@id": "way/201760459",
+        "area": "yes",
+        "bridge": "yes",
+        "foot": "yes",
+        "highway": "pedestrian",
+        "layer": "1",
+        "lit": "yes",
+        "surface": "sett",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5682537,
+          46.5206728
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201760461",
+      "properties": {
+        "@id": "way/201760461",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "yes",
+        "ramp:bicycle": "yes",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5682628,
+          46.521068
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/201761084",
+      "properties": {
+        "@id": "way/201761084",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "24",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5641948,
+          46.5193571
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/215531817",
+      "properties": {
+        "@id": "way/215531817",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "12",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5621658,
+          46.5180289
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/238840465",
+      "properties": {
+        "@id": "way/238840465",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "15",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5634182,
+          46.5169572
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/241311115",
+      "properties": {
+        "@id": "way/241311115",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "32",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5664404,
+          46.522369
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/241311117",
+      "properties": {
+        "@id": "way/241311117",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "38",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5663499,
+          46.5219816
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/241311118",
+      "properties": {
+        "@id": "way/241311118",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "34",
+        "surface": "concrete",
+        "tactile_paving": "yes",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5664562,
+          46.522193
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/241311122",
+      "properties": {
+        "@id": "way/241311122",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "36",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "width": "8",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5653496,
+          46.5223438
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/285668033",
+      "properties": {
+        "@id": "way/285668033",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "concrete",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5663578,
+          46.5223619
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/494182969",
+      "properties": {
+        "@id": "way/494182969",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "ramp": "no",
+        "surface": "paved",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5722034,
+          46.5202982
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/583140641",
+      "properties": {
+        "@id": "way/583140641",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "9",
+        "surface": "concrete",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5716481,
+          46.5195711
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/686343060",
+      "properties": {
+        "@id": "way/686343060",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "50",
+        "surface": "wood",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5665483,
+          46.5187484
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/686343061",
+      "properties": {
+        "@id": "way/686343061",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "50",
+        "surface": "wood",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5667743,
+          46.518721
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/686343062",
+      "properties": {
+        "@id": "way/686343062",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "26",
+        "surface": "wood",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5665851,
+          46.5187294
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/686343063",
+      "properties": {
+        "@id": "way/686343063",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "26",
+        "surface": "wood",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5667196,
+          46.5187133
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/686343068",
+      "properties": {
+        "@id": "way/686343068",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "up",
+        "layer": "1",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "11",
+        "surface": "wood",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5666827,
+          46.5188212
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/694613764",
+      "properties": {
+        "@id": "way/694613764",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "ramp": "yes",
+        "ramp:bicycle": "yes",
+        "step_count": "24",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5719667,
+          46.5194978
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/869054294",
+      "properties": {
+        "@id": "way/869054294",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "ramp": "no",
+        "step_count": "14",
+        "surface": "metal",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5718002,
+          46.5184483
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/965676963",
+      "properties": {
+        "@id": "way/965676963",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "separate",
+        "ramp:wheelchair": "separate",
+        "step_count": "10",
+        "surface": "concrete:plates",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5659453,
+          46.5230853
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/965676964",
+      "properties": {
+        "@id": "way/965676964",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "ramp": "no",
+        "step_count": "11",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5660604,
+          46.5230021
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/965676965",
+      "properties": {
+        "@id": "way/965676965",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "step_count": "7",
+        "surface": "compacted",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5660634,
+          46.5229545
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/965676971",
+      "properties": {
+        "@id": "way/965676971",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5650918,
+          46.5233412
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/965679694",
+      "properties": {
+        "@id": "way/965679694",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.564208,
+          46.5232826
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/975363552",
+      "properties": {
+        "@id": "way/975363552",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "layer": "1",
+        "ramp": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.568251,
+          46.520701
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/975363554",
+      "properties": {
+        "@id": "way/975363554",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5682191,
+          46.5208082
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/975363555",
+      "properties": {
+        "@id": "way/975363555",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.568219,
+          46.5207663
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/975369648",
+      "properties": {
+        "@id": "way/975369648",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "down",
+        "ramp": "no",
+        "step_count": "9",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5644417,
+          46.5213433
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/975369656",
+      "properties": {
+        "@id": "way/975369656",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "down",
+        "ramp": "no",
+        "step_count": "9",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5644348,
+          46.5214881
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/975370958",
+      "properties": {
+        "@id": "way/975370958",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "down",
+        "layer": "1",
+        "ramp": "no",
+        "step_count": "5",
+        "surface": "asphalt",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.565385,
+          46.5219158
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/975370961",
+      "properties": {
+        "@id": "way/975370961",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "down",
+        "ramp": "no",
+        "step_count": "4",
+        "surface": "asphalt",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5644374,
+          46.5216346
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/978481211",
+      "properties": {
+        "@id": "way/978481211",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "9",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5650072,
+          46.5218251
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/978481213",
+      "properties": {
+        "@id": "way/978481213",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "9",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5650069,
+          46.5217886
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/978481215",
+      "properties": {
+        "@id": "way/978481215",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "lit": "yes",
+        "ramp": "no",
+        "step_count": "16",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5649623,
+          46.5219424
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1112707661",
+      "properties": {
+        "@id": "way/1112707661",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "ramp": "no",
+        "surface": "asphalt",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5664185,
+          46.5190848
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1147412089",
+      "properties": {
+        "@id": "way/1147412089",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "layer": "1",
+        "ramp": "no",
+        "surface": "asphalt",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.565217,
+          46.5219473
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1269093528",
+      "properties": {
+        "@id": "way/1269093528",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "layer": "1",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "asphalt",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5685709,
+          46.5204762
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1269093529",
+      "properties": {
+        "@id": "way/1269093529",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "down",
+        "layer": "1",
+        "lit": "yes",
+        "ramp": "no",
+        "surface": "asphalt",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5686773,
+          46.5205055
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1410036097",
+      "properties": {
+        "@id": "way/1410036097",
+        "area": "yes",
+        "handrail": "yes",
+        "highway": "steps",
+        "ramp": "separate",
+        "ramp:wheelchair": "separate",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5655912,
+          46.5229951
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1410036098",
+      "properties": {
+        "@id": "way/1410036098",
+        "highway": "steps",
+        "incline": "down",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5642381,
+          46.5227761
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1410036099",
+      "properties": {
+        "@id": "way/1410036099",
+        "area": "yes",
+        "handrail": "no",
+        "highway": "steps",
+        "ramp": "no",
+        "step_count": "8",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5648428,
+          46.522816
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1410036104",
+      "properties": {
+        "@id": "way/1410036104",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "up",
+        "ramp": "no",
+        "step_count": "8",
+        "surface": "concrete",
+        "tactile_paving": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.565475,
+          46.5226807
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1410036111",
+      "properties": {
+        "@id": "way/1410036111",
+        "handrail": "yes",
+        "highway": "steps",
+        "incline": "up",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5655927,
+          46.5229951
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1410036114",
+      "properties": {
+        "@id": "way/1410036114",
+        "area": "yes",
+        "handrail": "yes",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5659446,
+          46.5230878
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1410092937",
+      "properties": {
+        "@id": "way/1410092937",
+        "handrail": "no",
+        "highway": "steps",
+        "incline": "down",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5626074,
+          46.5211537
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1414230851",
+      "properties": {
+        "@id": "way/1414230851",
+        "highway": "steps",
+        "incline": "down",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5617101,
+          46.5172878
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1528561681",
+      "properties": {
+        "@id": "way/1528561681",
+        "highway": "steps",
+        "layer": "-0.5",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5654412,
+          46.5204446
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1528561682",
+      "properties": {
+        "@id": "way/1528561682",
+        "highway": "steps",
+        "incline": "up",
+        "layer": "-1",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5654634,
+          46.5204424
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/1763068768",
+      "properties": {
+        "@id": "node/1763068768",
+        "access": "yes",
+        "door": "hinged",
+        "entrance": "staircase",
+        "level": "0",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5622347,
+          46.5182942
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/9825500174",
+      "properties": {
+        "@id": "node/9825500174",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5611491,
+          46.5181575
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/12409049820",
+      "properties": {
+        "@id": "node/12409049820",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5610662,
+          46.5184514
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/12409049829",
+      "properties": {
+        "@id": "node/12409049829",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5614788,
+          46.5183627
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13666275433",
+      "properties": {
+        "@id": "node/13666275433",
+        "door": "hinged",
+        "entrance": "yes",
+        "level": "0",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5628792,
+          46.5183896
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13666275434",
+      "properties": {
+        "@id": "node/13666275434",
+        "door": "yes",
+        "entrance": "yes",
+        "level": "0",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5629898,
+          46.5184683
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13666275438",
+      "properties": {
+        "@id": "node/13666275438",
+        "door": "yes",
+        "entrance": "yes",
+        "level": "0",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5629892,
+          46.5186186
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13666275439",
+      "properties": {
+        "@id": "node/13666275439",
+        "door": "yes",
+        "entrance": "yes",
+        "level": "0",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5628762,
+          46.5186954
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13666275441",
+      "properties": {
+        "@id": "node/13666275441",
+        "door": "hinged",
+        "entrance": "yes",
+        "level": "1",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.563345,
+          46.5186177
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13666275442",
+      "properties": {
+        "@id": "node/13666275442",
+        "door": "hinged",
+        "entrance": "yes",
+        "level": "1",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5634605,
+          46.5186992
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13666275444",
+      "properties": {
+        "@id": "node/13666275444",
+        "door": "hinged",
+        "entrance": "yes",
+        "level": "0",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5634716,
+          46.5187907
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/14079704291",
+      "properties": {
+        "@id": "node/14079704291",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5611909,
+          46.518266
+        ]
+      }
+    }
+  ]
+}
