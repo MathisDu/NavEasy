@@ -12,6 +12,9 @@ import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.model.RouteResponse
 import io.ktor.client.*
 import io.ktor.client.call.body
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -32,8 +35,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -66,12 +67,24 @@ class MapViewModel(
     private val _osmFeatures = MutableStateFlow<List<OsmFeature>>(emptyList())
     val osmFeatures: StateFlow<List<OsmFeature>> = _osmFeatures.asStateFlow()
 
+    // Avoid polygon mode state
+    private val _avoidMode = MutableStateFlow(false)
+    val avoidMode: StateFlow<Boolean> = _avoidMode.asStateFlow()
+
+    // List of avoid polygon centers (each polygon is a square around a center point)
+    private val _avoidPolygonCenters = MutableStateFlow<List<Location>>(emptyList())
+    val avoidPolygonCenters: StateFlow<List<Location>> = _avoidPolygonCenters.asStateFlow()
+
     // Debounce job for Overpass API calls
     private var overpassDebounceJob: Job? = null
 
     // Debounce jobs for Nominatim search
     private var searchStartDebounceJob: Job? = null
     private var searchDestinationDebounceJob: Job? = null
+
+    // Store start/end locations for route recalculation when avoid polygons change
+    private var _routeStart: Location? = null
+    private var _routeEnd: Location? = null
 
     // Start location search state
     private val _searchResultsStart = MutableStateFlow<List<NominatimSearchResult>>(emptyList())
@@ -138,11 +151,14 @@ class MapViewModel(
     }
 
     fun calculateRoute(start: Location, end: Location) {
+        _routeStart = start
+        _routeEnd = end
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val request = RouteRequest(start, end, _selectedProfile.value)
+                val avoidPolygons = buildAvoidPolygons()
+                val request = RouteRequest(start, end, _selectedProfile.value, avoidPolygons)
                 val response = httpClient.post("$serverUrl/api/route") {
                     contentType(ContentType.Application.Json)
                     setBody(request)
@@ -183,6 +199,44 @@ class MapViewModel(
 
     fun dismissError() {
         _errorMessage.value = null
+    }
+
+    fun toggleAvoidMode() {
+        _avoidMode.value = !_avoidMode.value
+        // Clear avoid polygons when disabling avoid mode
+        if (!_avoidMode.value) {
+            _avoidPolygonCenters.value = emptyList()
+        }
+    }
+
+    fun addAvoidPolygonAt(location: Location) {
+        val updated = _avoidPolygonCenters.value + location
+        _avoidPolygonCenters.value = updated
+        // Recalculate route if start and end are set
+        if (_routeStart != null && _routeEnd != null) {
+            calculateRoute(_routeStart!!, _routeEnd!!)
+        }
+    }
+
+    /**
+     * Build the list of avoid polygons (as GeoJSON-style coordinate rings) from the stored centers.
+     * Each polygon is a small circle (approximated by 16 points) around the center point.
+     */
+    private fun buildAvoidPolygons(): List<List<Location>> {
+        val radiusDegrees = 0.0002 // ~20 meters
+        val points = 16
+        return _avoidPolygonCenters.value.map { center ->
+            // Scale longitude radius by cos(lat) so the shape appears circular on the map
+            val lonRadius = radiusDegrees * cos(center.lat * PI / 180.0)
+            val ring = (0 until points).map { i ->
+                val angle = 2.0 * PI * i / points
+                Location(
+                    center.lat + radiusDegrees * cos(angle),
+                    center.lon + lonRadius * sin(angle)
+                )
+            }
+            ring + ring.first() // close the ring
+        }
     }
 
     /**

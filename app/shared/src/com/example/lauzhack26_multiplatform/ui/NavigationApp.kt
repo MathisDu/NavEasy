@@ -46,6 +46,8 @@ fun NavigationApp(
     val isSearchingStart by viewModel.isSearchingStart.collectAsState()
     val searchResultsDestination by viewModel.searchResultsDestination.collectAsState()
     val isSearchingDestination by viewModel.isSearchingDestination.collectAsState()
+    val avoidMode by viewModel.avoidMode.collectAsState()
+    val avoidPolygonCenters by viewModel.avoidPolygonCenters.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var routeStart by remember { mutableStateOf<Location?>(null) }
@@ -89,6 +91,7 @@ fun NavigationApp(
             routeCoordinates = route,
             reportLocations = reports.map { it.location },
             osmFeatures = osmFeatures,
+            avoidPolygonCenters = avoidPolygonCenters,
             onFeatureClick = { feature ->
                 selectedFeature = feature
             },
@@ -97,7 +100,11 @@ fun NavigationApp(
             },
             onLocationClick = { location ->
                 if (!showProfileSelector) {
-                    viewModel.openReportForm(location)
+                    if (avoidMode) {
+                        viewModel.addAvoidPolygonAt(location)
+                    } else {
+                        viewModel.openReportForm(location)
+                    }
                 }
             }
         )
@@ -204,6 +211,14 @@ fun NavigationApp(
                         .padding(4.dp)
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { viewModel.toggleAvoidMode() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (avoidMode) Color(0xFFD32F2F) else Color(0xFF9C27B0)
+                        )
+                    ) {
+                        Text(if (avoidMode) "⛔ Éviter" else "⭕ Éviter")
+                    }
                     Button(
                         onClick = { mapState.isDarkMode = !mapState.isDarkMode },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
