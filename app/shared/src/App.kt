@@ -53,7 +53,7 @@ fun App() {
 
     val viewModel = remember {
         try {
-            if (httpClient != null) MapViewModel(httpClient) else null
+            if (httpClient != null) MapViewModel(httpClient, serverUrl = getServerUrl()) else null
         } catch (e: Exception) {
             initializationError = "ViewModel error: ${e.message}"
             null

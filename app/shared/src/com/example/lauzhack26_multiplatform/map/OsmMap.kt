@@ -222,7 +222,7 @@ class MapState(
 /**
  * Composable that renders an OpenStreetMap using Canvas.
  * On WasmJs, tiles are rendered via HTML <img> elements behind the Canvas.
- * On other platforms, tiles are drawn as gray placeholders in the Canvas.
+ * On other platforms, tiles are fetched via TileLoader and drawn in the Canvas.
  */
 @Composable
 fun OsmMap(
@@ -236,6 +236,7 @@ fun OsmMap(
     avoidPolygonCenters: List<Location> = emptyList(),
     userLocation: Location? = null,
     onCanvasSizeReady: ((IntSize) -> Unit)? = null,
+    tileLoader: TileLoader? = null,
 ) {
     val tileLayer = remember { createTileLayer() }
     val isWasmJs = tileLayer != null
@@ -269,6 +270,26 @@ fun OsmMap(
     val currentOffset = mapState.offset
     val currentZoom = mapState.zoom
     val currentDarkMode = mapState.isDarkMode
+
+    // Pre-load tiles in the background for non-WasmJs platforms
+    if (!isWasmJs && tileLoader != null && initialized && canvasSize.width > 0 && canvasSize.height > 0) {
+        LaunchedEffect(currentOffset.x.toInt(), currentOffset.y.toInt(), currentZoom) {
+            val tileSize = 256
+            val maxTiles = MercatorProjection.tilesAtZoom(currentZoom)
+            val startCol = floor((-currentOffset.x) / tileSize).toInt()
+            val endCol = startCol + canvasSize.width / tileSize + 1
+            val startRow = floor((-currentOffset.y) / tileSize).toInt()
+            val endRow = startRow + canvasSize.height / tileSize + 1
+
+            for (row in startRow..endRow) {
+                for (col in startCol..endCol) {
+                    if (row >= 0 && row < maxTiles && col >= 0 && col < maxTiles) {
+                        tileLoader.getTile(row, col, currentZoom)
+                    }
+                }
+            }
+        }
+    }
 
     // Update tile layer after every recomposition
     if (isWasmJs && initialized && canvasSize.width > 0 && canvasSize.height > 0) {
@@ -426,7 +447,7 @@ fun OsmMap(
             val endRow = startRow + (size.height / tileSize).toInt() + 1
             val maxTiles = MercatorProjection.tilesAtZoom(mapState.zoom)
 
-            // Draw placeholder tiles for non-WasmJs platforms
+            // Draw tiles for non-WasmJs platforms
             if (!isWasmJs) {
                 for (row in startRow..endRow) {
                     for (col in startCol..endCol) {
@@ -435,11 +456,20 @@ fun OsmMap(
                         val x = col * tileSize + mapState.offset.x
                         val y = row * tileSize + mapState.offset.y
 
-                        drawRect(
-                            color = Color(0xFFE0E0E0),
-                            topLeft = Offset(x, y),
-                            size = Size(tileSize, tileSize)
-                        )
+                        // Try to draw cached tile, fallback to gray placeholder
+                        val bitmap = tileLoader?.getTileFromCache(row, col, mapState.zoom)
+                        if (bitmap != null) {
+                            drawImage(
+                                image = bitmap,
+                                topLeft = Offset(x, y)
+                            )
+                        } else {
+                            drawRect(
+                                color = Color(0xFFE0E0E0),
+                                topLeft = Offset(x, y),
+                                size = Size(tileSize, tileSize)
+                            )
+                        }
                     }
                 }
             }
