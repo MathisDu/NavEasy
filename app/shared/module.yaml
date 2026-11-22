@@ -32,6 +32,9 @@ dependencies@wasmJs:
   - $libs.ktor.client.js
 
 settings:
+  kotlin:
+    serialization:
+      enabled: true
   compose:
     enabled: true
     resources:

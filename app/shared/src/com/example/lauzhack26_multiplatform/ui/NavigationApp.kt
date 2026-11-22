@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,6 +25,7 @@ import com.example.lauzhack26_multiplatform.map.MapState
 import com.example.lauzhack26_multiplatform.map.OsmMap
 import com.example.lauzhack26_multiplatform.model.Location
 import com.example.lauzhack26_multiplatform.model.MobilityProfile
+import com.example.lauzhack26_multiplatform.model.NominatimSearchResult
 import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.ReportType
 
@@ -38,12 +42,25 @@ fun NavigationApp(
     val showReportForm by viewModel.showReportForm.collectAsState()
     val reportLocation by viewModel.reportLocation.collectAsState()
     val osmFeatures by viewModel.osmFeatures.collectAsState()
+    val searchResultsStart by viewModel.searchResultsStart.collectAsState()
+    val isSearchingStart by viewModel.isSearchingStart.collectAsState()
+    val searchResultsDestination by viewModel.searchResultsDestination.collectAsState()
+    val isSearchingDestination by viewModel.isSearchingDestination.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var routeStart by remember { mutableStateOf<Location?>(null) }
     var routeEnd by remember { mutableStateOf<Location?>(null) }
-    var showRouteInput by remember { mutableStateOf(false) }
     var selectedFeature by remember { mutableStateOf<OsmFeature?>(null) }
+
+    // Start search state
+    var searchQueryStart by remember { mutableStateOf("") }
+    var isSearchBarFocusedStart by remember { mutableStateOf(false) }
+    var selectedStartDisplayName by remember { mutableStateOf<String?>(null) }
+
+    // Destination search state
+    var searchQueryDestination by remember { mutableStateOf("") }
+    var isSearchBarFocusedDestination by remember { mutableStateOf(false) }
+    var selectedDestinationDisplayName by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadReports()
@@ -79,21 +96,7 @@ fun NavigationApp(
                 canvasSizeForFit = size
             },
             onLocationClick = { location ->
-                if (showProfileSelector) {
-                    // Do nothing while profile selector is shown
-                } else if (showRouteInput) {
-                    if (routeStart == null) {
-                        routeStart = location
-                    } else if (routeEnd == null) {
-                        routeEnd = location
-                        routeStart?.let { start ->
-                            viewModel.calculateRoute(start, routeEnd!!)
-                        }
-                        showRouteInput = false
-                        routeStart = null
-                        routeEnd = null
-                    }
-                } else {
+                if (!showProfileSelector) {
                     viewModel.openReportForm(location)
                 }
             }
@@ -202,19 +205,6 @@ fun NavigationApp(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = {
-                            showRouteInput = !showRouteInput
-                            viewModel.clearRoute()
-                            routeStart = null
-                            routeEnd = null
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (showRouteInput) Color(0xFF1565C0) else Color.LightGray
-                        )
-                    ) {
-                        Text(if (showRouteInput) "Annuler" else "Itinéraire")
-                    }
-                    Button(
                         onClick = { mapState.isDarkMode = !mapState.isDarkMode },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
                     ) {
@@ -229,21 +219,110 @@ fun NavigationApp(
                 }
             }
 
-            if (showRouteInput) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 60.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    tonalElevation = 4.dp
+            // Search panel with two fields (always visible)
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp, start = 8.dp, end = 8.dp),
+                shape = RoundedCornerShape(12.dp),
+                tonalElevation = 4.dp,
+                color = Color.White
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
                 ) {
-                    Text(
-                        text = if (routeStart == null)
-                            "Cliquez pour le point de départ"
-                        else
-                            "Cliquez pour la destination",
-                        modifier = Modifier.padding(12.dp)
+                    // Start location search
+                    SearchBar(
+                        query = searchQueryStart,
+                        onQueryChange = {
+                            searchQueryStart = it
+                            viewModel.searchAddressStart(it)
+                        },
+                        onClear = {
+                            searchQueryStart = ""
+                            selectedStartDisplayName = null
+                            routeStart = null
+                            viewModel.clearSearchResultsStart()
+                        },
+                        searchResults = searchResultsStart,
+                        isSearching = isSearchingStart,
+                        isFocused = isSearchBarFocusedStart,
+                        onFocusChange = { isSearchBarFocusedStart = it },
+                        placeholder = "Point de départ",
+                        onResultSelected = { result ->
+                            val location = result.toLocation()
+                            routeStart = location
+                            selectedStartDisplayName = result.displayName
+                            searchQueryStart = result.displayName
+                            viewModel.clearSearchResultsStart()
+                            isSearchBarFocusedStart = false
+                            // If destination is also set, calculate route
+                            if (routeEnd != null) {
+                                viewModel.calculateRoute(location, routeEnd!!)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Destination search
+                    SearchBar(
+                        query = searchQueryDestination,
+                        onQueryChange = {
+                            searchQueryDestination = it
+                            viewModel.searchAddressDestination(it)
+                        },
+                        onClear = {
+                            searchQueryDestination = ""
+                            selectedDestinationDisplayName = null
+                            routeEnd = null
+                            viewModel.clearSearchResultsDestination()
+                        },
+                        searchResults = searchResultsDestination,
+                        isSearching = isSearchingDestination,
+                        isFocused = isSearchBarFocusedDestination,
+                        onFocusChange = { isSearchBarFocusedDestination = it },
+                        placeholder = "Destination",
+                        onResultSelected = { result ->
+                            val location = result.toLocation()
+                            routeEnd = location
+                            selectedDestinationDisplayName = result.displayName
+                            searchQueryDestination = result.displayName
+                            viewModel.clearSearchResultsDestination()
+                            isSearchBarFocusedDestination = false
+                            // If start is also set, calculate route
+                            if (routeStart != null) {
+                                viewModel.calculateRoute(routeStart!!, location)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Clear button to reset both fields
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                searchQueryStart = ""
+                                searchQueryDestination = ""
+                                selectedStartDisplayName = null
+                                selectedDestinationDisplayName = null
+                                routeStart = null
+                                routeEnd = null
+                                viewModel.clearSearchResultsStart()
+                                viewModel.clearSearchResultsDestination()
+                            },
+                            modifier = Modifier.wrapContentWidth(),
+                            enabled = searchQueryStart.isNotBlank() || searchQueryDestination.isNotBlank()
+                        ) {
+                            Text("Effacer")
+                        }
+                    }
                 }
             }
         }
@@ -512,6 +591,185 @@ fun ReportFormDialog(
                         Text("Annuler")
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Search bar composable for address/place search using Nominatim.
+ */
+@Composable
+fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit,
+    searchResults: List<NominatimSearchResult>,
+    isSearching: Boolean,
+    isFocused: Boolean,
+    onFocusChange: (Boolean) -> Unit,
+    placeholder: String,
+    onResultSelected: (NominatimSearchResult) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val showResults = searchResults.isNotEmpty() || (isFocused && (isSearching || query.isNotBlank()))
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Search input row
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = if (isFocused) 4.dp else 2.dp,
+            color = Color.White
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Search icon
+                Text(
+                    text = "🔍",
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(start = 8.dp, end = 4.dp)
+                )
+
+                // Text field
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(8.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.Black
+                    ),
+                    decorationBox = { innerTextField ->
+                        if (query.isEmpty() && !isFocused) {
+                            Text(
+                                text = placeholder,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                        innerTextField()
+                    },
+                    singleLine = true,
+                    maxLines = 1
+                )
+
+                // Clear button
+                if (query.isNotBlank()) {
+                    IconButton(
+                        onClick = onClear,
+                        modifier = Modifier.padding(4.dp)
+                    ) {
+                        Text(
+                            text = "✕",
+                            fontSize = 18.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+        }
+
+        // Search results dropdown
+        if (showResults) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 12.dp, bottomEnd = 12.dp),
+                tonalElevation = 4.dp,
+                color = Color.White
+            ) {
+                if (isSearching) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color(0xFF1565C0)
+                        )
+                    }
+                } else if (searchResults.isEmpty() && query.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Aucun résultat trouvé",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp)
+                    ) {
+                        items(searchResults, key = { it.placeId }) { result ->
+                            SearchResultItem(
+                                result = result,
+                                onClick = {
+                                    onResultSelected(result)
+                                    onFocusChange(false)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Individual search result item.
+ */
+@Composable
+fun SearchResultItem(
+    result: NominatimSearchResult,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "📍",
+            fontSize = 18.sp,
+            modifier = Modifier.padding(end = 12.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = result.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (result.osmClass != null || result.type != null) {
+                Text(
+                    text = buildString {
+                        result.osmClass?.let { append(it) }
+                        if (result.osmClass != null && result.type != null) append(" · ")
+                        result.type?.let { append(it) }
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

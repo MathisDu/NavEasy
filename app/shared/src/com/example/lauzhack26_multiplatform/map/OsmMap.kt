@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.geometry.Size as GeometrySize
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
@@ -143,9 +142,6 @@ class MapState(
         centerLon = newLon
     }
 
-    companion object {
-        private const val TILE_SIZE = 256
-    }
 }
 
 /**

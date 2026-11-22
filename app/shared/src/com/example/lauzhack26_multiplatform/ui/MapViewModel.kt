@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lauzhack26_multiplatform.model.Location
 import com.example.lauzhack26_multiplatform.model.MobilityProfile
+import com.example.lauzhack26_multiplatform.model.NominatimSearchResult
 import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportType
@@ -18,20 +19,23 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.pow
+import kotlin.time.Duration.Companion.milliseconds
 
 class MapViewModel(
     private val httpClient: HttpClient,
@@ -61,6 +65,27 @@ class MapViewModel(
 
     private val _osmFeatures = MutableStateFlow<List<OsmFeature>>(emptyList())
     val osmFeatures: StateFlow<List<OsmFeature>> = _osmFeatures.asStateFlow()
+
+    // Debounce job for Overpass API calls
+    private var overpassDebounceJob: Job? = null
+
+    // Debounce jobs for Nominatim search
+    private var searchStartDebounceJob: Job? = null
+    private var searchDestinationDebounceJob: Job? = null
+
+    // Start location search state
+    private val _searchResultsStart = MutableStateFlow<List<NominatimSearchResult>>(emptyList())
+    val searchResultsStart: StateFlow<List<NominatimSearchResult>> = _searchResultsStart.asStateFlow()
+
+    private val _isSearchingStart = MutableStateFlow(false)
+    val isSearchingStart: StateFlow<Boolean> = _isSearchingStart.asStateFlow()
+
+    // Destination search state
+    private val _searchResultsDestination = MutableStateFlow<List<NominatimSearchResult>>(emptyList())
+    val searchResultsDestination: StateFlow<List<NominatimSearchResult>> = _searchResultsDestination.asStateFlow()
+
+    private val _isSearchingDestination = MutableStateFlow(false)
+    val isSearchingDestination: StateFlow<Boolean> = _isSearchingDestination.asStateFlow()
 
     fun setProfile(profile: MobilityProfile) {
         _selectedProfile.value = profile
@@ -146,10 +171,6 @@ class MapViewModel(
         }
     }
 
-    fun clearRoute() {
-        _route.value = emptyList()
-    }
-
     fun openReportForm(location: Location) {
         _reportLocation.value = location
         _showReportForm.value = true
@@ -165,13 +186,122 @@ class MapViewModel(
     }
 
     /**
-     * Fetch staircase features from OpenStreetMap using the Overpass API.
+     * Search for the starting point using the Nominatim geocoding API via the backend proxy.
+     * Uses debouncing so suggestions appear as the user types.
+     */
+    fun searchAddressStart(query: String) {
+        if (query.isBlank()) {
+            _searchResultsStart.value = emptyList()
+            searchStartDebounceJob?.cancel()
+            return
+        }
+
+        // Cancel any pending debounced request
+        searchStartDebounceJob?.cancel()
+
+        searchStartDebounceJob = viewModelScope.launch {
+            // Wait 500ms after the user stops typing
+            delay(500.milliseconds)
+
+            _isSearchingStart.value = true
+            _errorMessage.value = null
+            try {
+                val response = httpClient.post("$serverUrl/api/nominatim/search") {
+                    contentType(ContentType.Application.Json)
+                    setBody(NominatimSearchRequest(query))
+                }
+
+                if (response.status == HttpStatusCode.OK) {
+                    val result = response.body<NominatimSearchResponse>()
+                    val results = nominatimJson.decodeFromString<List<NominatimSearchResult>>(result.result)
+                    _searchResultsStart.value = results
+                } else {
+                    _searchResultsStart.value = emptyList()
+                    _errorMessage.value = "Erreur de recherche (${response.status})"
+                }
+            } catch (e: Exception) {
+                if (e !is CancellationException) {
+                    _searchResultsStart.value = emptyList()
+                    _errorMessage.value = "Erreur: ${e.message}"
+                } else {
+                    throw e
+                }
+            } finally {
+                _isSearchingStart.value = false
+            }
+        }
+    }
+
+    /**
+     * Search for the destination using the Nominatim geocoding API via the backend proxy.
+     * Uses debouncing so suggestions appear as the user types.
+     */
+    fun searchAddressDestination(query: String) {
+        if (query.isBlank()) {
+            _searchResultsDestination.value = emptyList()
+            searchDestinationDebounceJob?.cancel()
+            return
+        }
+
+        // Cancel any pending debounced request
+        searchDestinationDebounceJob?.cancel()
+
+        searchDestinationDebounceJob = viewModelScope.launch {
+            // Wait 500ms after the user stops typing
+            delay(500.milliseconds)
+
+            _isSearchingDestination.value = true
+            _errorMessage.value = null
+            try {
+                val response = httpClient.post("$serverUrl/api/nominatim/search") {
+                    contentType(ContentType.Application.Json)
+                    setBody(NominatimSearchRequest(query))
+                }
+
+                if (response.status == HttpStatusCode.OK) {
+                    val result = response.body<NominatimSearchResponse>()
+                    val results = nominatimJson.decodeFromString<List<NominatimSearchResult>>(result.result)
+                    _searchResultsDestination.value = results
+                } else {
+                    _searchResultsDestination.value = emptyList()
+                    _errorMessage.value = "Erreur de recherche (${response.status})"
+                }
+            } catch (e: Exception) {
+                if (e !is CancellationException) {
+                    _searchResultsDestination.value = emptyList()
+                    _errorMessage.value = "Erreur: ${e.message}"
+                } else {
+                    throw e
+                }
+            } finally {
+                _isSearchingDestination.value = false
+            }
+        }
+    }
+
+    fun clearSearchResultsStart() {
+        _searchResultsStart.value = emptyList()
+    }
+
+    fun clearSearchResultsDestination() {
+        _searchResultsDestination.value = emptyList()
+    }
+
+    /**
+     * Fetch staircase features from OpenStreetMap using the Overpass API via the backend proxy.
+     * Uses debouncing to avoid spamming requests when zooming/panning.
      * @param centerLat center latitude of the map viewport
      * @param centerLon center longitude of the map viewport
      * @param zoom current zoom level
      */
     fun loadStepsFromOverpass(centerLat: Double, centerLon: Double, zoom: Int) {
-        viewModelScope.launch {
+        // Cancel any pending debounced request
+        overpassDebounceJob?.cancel()
+
+        overpassDebounceJob = viewModelScope.launch {
+            // Wait 1 second after the last zoom/pan before making the request
+            delay(1000.milliseconds)
+
             try {
                 // Calculate bounding box from center and zoom
                 val (minLat, minLon, maxLat, maxLon) = calculateBoundingBox(centerLat, centerLon, zoom)
@@ -183,13 +313,14 @@ class MapViewModel(
                     out;
                 """.trimIndent()
 
-                val encodedQuery = encodeOverpassQuery(query)
-                val url = "https://overpass-api.de/api/interpreter?data=$encodedQuery"
-
-                val response = httpClient.get(url)
+                // Send query through the backend proxy to avoid CORS issues
+                val response = httpClient.post("$serverUrl/api/overpass") {
+                    contentType(ContentType.Application.Json)
+                    setBody(OverpassQueryRequest(query))
+                }
                 if (response.status == HttpStatusCode.OK) {
-                    val jsonText = response.body<String>()
-                    val features = parseOverpassResponse(jsonText)
+                    val result = response.body<OverpassQueryResponse>()
+                    val features = parseOverpassResponse(result.result)
                     _osmFeatures.value = features
                 }
             } catch (e: Exception) {
@@ -202,6 +333,7 @@ class MapViewModel(
             }
         }
     }
+
 
     /**
      * Calculate bounding box from map center and zoom level.
@@ -227,19 +359,12 @@ class MapViewModel(
         )
     }
 
-    data class BoundingBox(
-        val minLat: Double,
-        val minLon: Double,
-        val maxLat: Double,
-        val maxLon: Double
-    )
 
     /**
      * Parse Overpass API JSON response into a list of OsmFeature.
      */
     private fun parseOverpassResponse(jsonText: String): List<OsmFeature> {
-        val json = Json { ignoreUnknownKeys = true }
-        val element = json.parseToJsonElement(jsonText)
+        val element = overpassJson.parseToJsonElement(jsonText)
 
         // Overpass response structure: { "elements": [ { "lat": ..., "lon": ..., "tags": { ... } } ] }
         val rootObj = element.jsonObject
@@ -263,62 +388,35 @@ class MapViewModel(
         }
     }
 
-    data class ReportRequest(
-        val type: ReportType,
-        val description: String,
-        val location: Location
-    )
 }
 
-/**
- * Simple URL encoder for Overpass API queries that works across all platforms.
- */
-private fun encodeOverpassQuery(query: String): String {
-    val safeChars = setOf('.', '_', '-', '~')
-    return buildString {
-        for (ch in query) {
-            if (ch.isLetterOrDigit() || ch in safeChars) {
-                append(ch)
-            } else {
-                val code = ch.code
-                if (code < 128) {
-                    // ASCII character
-                    append('%')
-                    append(code.toHexString())
-                } else {
-                    // UTF-8 encode
-                    if (code < 0x800) {
-                        append('%')
-                        append((0xC0 or (code ushr 6)).toHexString())
-                        append('%')
-                        append((0x80 or (code and 0x3F)).toHexString())
-                    } else if (code < 0x10000) {
-                        append('%')
-                        append((0xE0 or (code ushr 12)).toHexString())
-                        append('%')
-                        append((0x80 or ((code ushr 6) and 0x3F)).toHexString())
-                        append('%')
-                        append((0x80 or (code and 0x3F)).toHexString())
-                    } else {
-                        append('%')
-                        append((0xF0 or (code ushr 18)).toHexString())
-                        append('%')
-                        append((0x80 or ((code ushr 12) and 0x3F)).toHexString())
-                        append('%')
-                        append((0x80 or ((code ushr 6) and 0x3F)).toHexString())
-                        append('%')
-                        append((0x80 or (code and 0x3F)).toHexString())
-                    }
-                }
-            }
-        }
-    }
-}
+@Serializable
+data class OverpassQueryRequest(val data: String)
 
-private fun Int.toHexString(): String {
-    val hexVal = this and 0xFF
-    return buildString(2) {
-        append("0123456789ABCDEF".getOrNull(hexVal / 16) ?: '?')
-        append("0123456789ABCDEF".getOrNull(hexVal % 16) ?: '?')
-    }
-}
+@Serializable
+data class OverpassQueryResponse(val result: String)
+
+@Serializable
+data class NominatimSearchRequest(val query: String)
+
+@Serializable
+data class NominatimSearchResponse(val result: String)
+
+data class BoundingBox(
+    val minLat: Double,
+    val minLon: Double,
+    val maxLat: Double,
+    val maxLon: Double
+)
+
+@Serializable
+data class ReportRequest(
+    val type: ReportType,
+    val description: String,
+    val location: Location
+)
+
+// Shared Json instances to avoid redundant creation on each parse
+val nominatimJson = Json { ignoreUnknownKeys = true }
+val overpassJson = Json { ignoreUnknownKeys = true }
+
