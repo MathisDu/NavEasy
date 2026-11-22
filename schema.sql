@@ -1,5 +1,5 @@
--- Schema SQL pour Supabase
--- Tables correspondant aux modèles de données de core/
+-- SQL Schema for Supabase
+-- Tables corresponding to the data models in core/
 
 CREATE TABLE public.reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,7 +30,7 @@ CREATE TABLE public.reports (
 -- Threshold: when resolved_votes reaches this number, the report is marked as resolved
 -- Current threshold: 5 votes
 
--- Index pour les requêtes géographiques (recherche par zone)
+-- Index for geographic queries (search by area)
 CREATE INDEX idx_reports_location ON reports USING GIST (
     ll_to_earth(latitude, longitude)
 );

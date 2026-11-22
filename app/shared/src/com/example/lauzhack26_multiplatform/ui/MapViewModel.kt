@@ -14,7 +14,6 @@ import com.example.lauzhack26_multiplatform.model.NominatimSearchResult
 import com.example.lauzhack26_multiplatform.model.ObstacleType
 import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.Report
-import com.example.lauzhack26_multiplatform.model.ReportType
 import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.model.RouteResponse
 import com.example.lauzhack26_multiplatform.model.Severity
@@ -48,7 +47,6 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.math.pow
 import kotlin.time.Duration.Companion.milliseconds
 
 class MapViewModel(
@@ -130,11 +128,11 @@ class MapViewModel(
                 val jsonText = bytes.decodeToString()
                 val features = parseGeoJsonObstacles(jsonText)
                 _allOsmFeatures.value = features
-                println("[Obstacles] ${features.size} obstacles chargés depuis le fichier hors-ligne")
+                println("[Obstacles] ${features.size} obstacles loaded from offline file")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                println("[Obstacles] Erreur lors du chargement du fichier hors-ligne: ${e.message}")
+                println("[Obstacles] Error loading offline file: ${e.message}")
                 _allOsmFeatures.value = emptyList()
             }
         }
@@ -238,40 +236,40 @@ class MapViewModel(
                 val incline = properties["incline"]?.jsonPrimitive?.content
                 val handrail = properties["handrail"]?.jsonPrimitive?.content
                 val parts = mutableListOf<String>()
-                parts.add("Escalier")
-                if (stepCount != null) parts.add("$stepCount marches")
-                if (incline != null) parts.add(if (incline == "up") "montant" else "descendant")
-                if (handrail == "yes") parts.add("main courante")
+                parts.add("Stairs")
+                if (stepCount != null) parts.add("$stepCount steps")
+                if (incline != null) parts.add(if (incline == "up") "ascending" else "descending")
+                if (handrail == "yes") parts.add("handrail")
                 parts.joinToString(" • ")
             }
             ObstacleType.WHEELCHAIR_RESTRICTED -> {
                 val wheelchair = properties["wheelchair"]?.jsonPrimitive?.content
-                "Accès fauteuil : $wheelchair"
+                "Wheelchair access: $wheelchair"
             }
             ObstacleType.BAD_SURFACE -> {
                 val surface = properties["surface"]?.jsonPrimitive?.content
                 val smoothness = properties["smoothness"]?.jsonPrimitive?.content
                 val parts = mutableListOf<String>()
                 if (surface != null) parts.add("Surface: $surface")
-                if (smoothness != null) parts.add("Rugosité: $smoothness")
-                if (parts.isEmpty()) "Surface impraticable" else parts.joinToString(" • ")
+                if (smoothness != null) parts.add("Roughness: $smoothness")
+                if (parts.isEmpty()) "Impassable surface" else parts.joinToString(" • ")
             }
             ObstacleType.BARRIER -> {
                 val barrier = properties["barrier"]?.jsonPrimitive?.content
-                "Barrière: $barrier"
+                "Barrier: $barrier"
             }
             ObstacleType.HIGH_KERB -> {
                 val kerb = properties["kerb"]?.jsonPrimitive?.content
-                "Bordure haute${if (kerb != null) " ($kerb)" else ""}"
+                "High kerb${if (kerb != null) " ($kerb)" else ""}"
             }
-            ObstacleType.REVOLVING_DOOR -> "Porte à tambour"
-            ObstacleType.MISSING_TACTILE -> "Passe piéton sans bande podotactile"
-            ObstacleType.SILENT_CROSSING -> "Passe piéton sans signal sonore"
+            ObstacleType.REVOLVING_DOOR -> "Revolving door"
+            ObstacleType.MISSING_TACTILE -> "Crossing without tactile paving"
+            ObstacleType.SILENT_CROSSING -> "Crossing without audio signal"
             ObstacleType.COBBLESTONE -> {
                 val surface = properties["surface"]?.jsonPrimitive?.content
                 "Surface $surface"
             }
-            ObstacleType.KERB -> "Bordure de trottoir"
+            ObstacleType.KERB -> "Kerb"
         }
     }
 
@@ -332,7 +330,7 @@ class MapViewModel(
      */
     fun centerOnUser(mapState: MapState, canvasSize: IntSize) {
         val tracker = getLocationTracker() ?: run {
-            _errorMessage.value = "Localisation non disponible sur cette plateforme"
+            _errorMessage.value = "Location not available on this platform"
             return
         }
         viewModelScope.launch {
@@ -373,14 +371,12 @@ class MapViewModel(
     val searchResultsStart: StateFlow<List<NominatimSearchResult>> = _searchResultsStart.asStateFlow()
 
     private val _isSearchingStart = MutableStateFlow(false)
-    val isSearchingStart: StateFlow<Boolean> = _isSearchingStart.asStateFlow()
 
     // Destination search state
     private val _searchResultsDestination = MutableStateFlow<List<NominatimSearchResult>>(emptyList())
     val searchResultsDestination: StateFlow<List<NominatimSearchResult>> = _searchResultsDestination.asStateFlow()
 
     private val _isSearchingDestination = MutableStateFlow(false)
-    val isSearchingDestination: StateFlow<Boolean> = _isSearchingDestination.asStateFlow()
     private val _showReportMode = MutableStateFlow(false)
     val showReportMode: StateFlow<Boolean> = _showReportMode.asStateFlow()
 
@@ -478,10 +474,6 @@ class MapViewModel(
         }
     }
 
-    fun clearRoute() {
-        _route.value = emptyList()
-    }
-
     fun enterReportMode() {
         _showReportMode.value = true
     }
@@ -539,14 +531,6 @@ class MapViewModel(
             } finally {
                 _isLoading.value = false
             }
-        }
-    }
-
-    fun toggleAvoidMode() {
-        _avoidMode.value = !_avoidMode.value
-        // Clear avoid polygons when disabling avoid mode
-        if (!_avoidMode.value) {
-            _avoidPolygonCenters.value = emptyList()
         }
     }
 

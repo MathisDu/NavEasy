@@ -40,16 +40,16 @@ import kotlin.math.sqrt
  * Returns the canvas color for an obstacle type.
  */
 private fun ObstacleType.toColor(): Color = when (this) {
-    ObstacleType.STAIRS -> Color(0xFFFF0000)              // Rouge
-    ObstacleType.WHEELCHAIR_RESTRICTED -> Color(0xFFD32F2F) // Rouge foncé
+    ObstacleType.STAIRS -> Color(0xFFFF0000)              // Red
+    ObstacleType.WHEELCHAIR_RESTRICTED -> Color(0xFFD32F2F) // Dark red
     ObstacleType.BAD_SURFACE -> Color(0xFFFFA000)        // Orange
-    ObstacleType.BARRIER -> Color(0xFFE65100)            // Orange foncé
-    ObstacleType.HIGH_KERB -> Color(0xFF757575)          // Gris
-    ObstacleType.REVOLVING_DOOR -> Color(0xFF9C27B0)     // Violet
+    ObstacleType.BARRIER -> Color(0xFFE65100)            // Dark orange
+    ObstacleType.HIGH_KERB -> Color(0xFF757575)          // Gray
+    ObstacleType.REVOLVING_DOOR -> Color(0xFF9C27B0)     // Purple
     ObstacleType.MISSING_TACTILE -> Color(0xFF3F51B5)    // Indigo
-    ObstacleType.SILENT_CROSSING -> Color(0xFF009688)    // Vert d'eau
-    ObstacleType.COBBLESTONE -> Color(0xFF8D6E63)        // Marron
-    ObstacleType.KERB -> Color(0xFF9E9E9E)               // Gris clair
+    ObstacleType.SILENT_CROSSING -> Color(0xFF009688)    // Teal
+    ObstacleType.COBBLESTONE -> Color(0xFF8D6E63)        // Brown
+    ObstacleType.KERB -> Color(0xFF9E9E9E)               // Light gray
 }
 
 /**

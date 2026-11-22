@@ -37,7 +37,7 @@ fun App() {
                 }
             }
         } catch (e: Exception) {
-            initializationError = "Erreur HttpClient: ${e.message}"
+            initializationError = "HttpClient error: ${e.message}"
             null
         }
     }
@@ -46,7 +46,7 @@ fun App() {
         try {
             MapState()
         } catch (e: Exception) {
-            initializationError = "Erreur MapState: ${e.message}"
+            initializationError = "MapState error: ${e.message}"
             null
         }
     }
@@ -55,7 +55,7 @@ fun App() {
         try {
             if (httpClient != null) MapViewModel(httpClient) else null
         } catch (e: Exception) {
-            initializationError = "Erreur ViewModel: ${e.message}"
+            initializationError = "ViewModel error: ${e.message}"
             null
         }
     }
@@ -69,7 +69,7 @@ fun App() {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = initializationError ?: "Erreur d'initialisation",
+                    text = initializationError ?: "Initialization error",
                     color = Color.White,
                     modifier = Modifier.padding(16.dp)
                 )
