@@ -37,7 +37,9 @@ fun NavigationApp(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val showReportForm by viewModel.showReportForm.collectAsState()
     val reportLocation by viewModel.reportLocation.collectAsState()
-    val osmFeatures by viewModel.osmFeatures.collectAsState()
+    val osmFeatures by viewModel.filteredOsmFeatures.collectAsState()
+    val isCentering by viewModel.isCentering.collectAsState()
+    val userLocation by viewModel.userLocation.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
     var routeStart by remember { mutableStateOf<Location?>(null) }
@@ -57,10 +59,12 @@ fun NavigationApp(
         }
     }
 
-    // Reload OSM features when map center or zoom changes
-    LaunchedEffect(mapState.centerLat, mapState.centerLon, mapState.zoom) {
-        if (!showProfileSelector) {
-            viewModel.loadStepsFromOverpass(mapState.centerLat, mapState.centerLon, mapState.zoom)
+    // Auto-center on user location when the canvas size becomes available
+    var hasAutoCentered by remember { mutableStateOf(false) }
+    LaunchedEffect(canvasSizeForFit) {
+        if (canvasSizeForFit != null && !hasAutoCentered) {
+            hasAutoCentered = true
+            viewModel.centerOnUser(mapState, canvasSizeForFit!!)
         }
     }
 
@@ -72,6 +76,7 @@ fun NavigationApp(
             routeCoordinates = route,
             reportLocations = reports.map { it.location },
             osmFeatures = osmFeatures,
+            userLocation = userLocation,
             onFeatureClick = { feature ->
                 selectedFeature = feature
             },
@@ -299,6 +304,31 @@ fun NavigationApp(
             )
         }
 
+        // Center on User FAB
+        if (!showProfileSelector) {
+            FloatingActionButton(
+                onClick = {
+                    canvasSizeForFit?.let { size ->
+                        viewModel.centerOnUser(mapState, size)
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = Color(0xFF1565C0)
+            ) {
+                if (isCentering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("📍")
+                }
+            }
+        }
+
         // OSM Feature Detail Modal
         selectedFeature?.let { feature ->
             Box(
@@ -318,7 +348,7 @@ fun NavigationApp(
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
-                            text = "🪜 Escalier",
+                            text = "${feature.obstacleType.icon} ${feature.obstacleType.label}",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
                         )
                         Spacer(modifier = Modifier.height(8.dp))

@@ -27,16 +27,26 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.lauzhack26_multiplatform.model.Location
+import com.example.lauzhack26_multiplatform.model.ObstacleType
 import com.example.lauzhack26_multiplatform.model.OsmFeature
 import kotlin.math.floor
 import kotlin.math.sqrt
 
 /**
+ * Returns the canvas color for an obstacle type.
+ */
+private fun ObstacleType.toColor(): Color = when (this) {
+    ObstacleType.STAIRS -> Color(0xFFFF0000)      // Rouge
+    ObstacleType.COBBLESTONE -> Color(0xFF8D6E63) // Marron
+    ObstacleType.KERB -> Color(0xFF757575)        // Gris
+}
+
+/**
  * State for the OSM map component.
  */
 class MapState(
-    initialLat: Double = 48.8566, // Paris par défaut
-    initialLon: Double = 2.3522,
+    initialLat: Double = 46.5192, // EPFL Lausanne par défaut
+    initialLon: Double = 6.5667,
     initialZoom: Int = 15
 ) {
     var centerLat by mutableStateOf(initialLat)
@@ -162,6 +172,7 @@ fun OsmMap(
     routeCoordinates: List<Location> = emptyList(),
     reportLocations: List<Location> = emptyList(),
     osmFeatures: List<OsmFeature> = emptyList(),
+    userLocation: Location? = null,
     onCanvasSizeReady: ((IntSize) -> Unit)? = null,
 ) {
     val tileLayer = remember { createTileLayer() }
@@ -395,7 +406,7 @@ fun OsmMap(
             val endLoc = routeCoordinates.last()
             val (ex, ey) = MercatorProjection.locationToPixel(endLoc.lat, endLoc.lon, mapState.zoom)
             drawCircle(
-                color = Color(0xFFF44336),
+                color = Color(0xFFFF0000),
                 radius = 8f,
                 center = Offset((ex + mapState.offset.x.toDouble()).toFloat(), (ey + mapState.offset.y.toDouble()).toFloat())
             )
@@ -420,7 +431,7 @@ fun OsmMap(
                 )
             }
 
-            // Draw OSM features (stairs) as orange circles
+            // Draw OSM obstacle features with color by type
             for (feature in osmFeatures) {
                 val (worldX, worldY) = MercatorProjection.locationToPixel(
                     feature.location.lat, feature.location.lon, mapState.zoom
@@ -428,8 +439,29 @@ fun OsmMap(
                 val canvasX = (worldX + mapState.offset.x.toDouble()).toFloat()
                 val canvasY = (worldY + mapState.offset.y.toDouble()).toFloat()
                 drawCircle(
-                    color = Color(0xFFFFA500),
+                    color = feature.obstacleType.toColor(),
                     radius = 12f,
+                    center = Offset(canvasX, canvasY)
+                )
+            }
+
+            // Draw user location marker (blue dot with halo)
+            if (userLocation != null) {
+                val (worldX, worldY) = MercatorProjection.locationToPixel(
+                    userLocation.lat, userLocation.lon, mapState.zoom
+                )
+                val canvasX = (worldX + mapState.offset.x.toDouble()).toFloat()
+                val canvasY = (worldY + mapState.offset.y.toDouble()).toFloat()
+                // Outer halo
+                drawCircle(
+                    color = Color(0x444285F4),
+                    radius = 18f,
+                    center = Offset(canvasX, canvasY)
+                )
+                // Inner blue dot
+                drawCircle(
+                    color = Color(0xFF4285F4),
+                    radius = 8f,
                     center = Offset(canvasX, canvasY)
                 )
             }
