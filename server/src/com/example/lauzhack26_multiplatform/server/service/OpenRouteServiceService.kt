@@ -1,7 +1,6 @@
 package com.example.lauzhack26_multiplatform.server.service
 
 import com.example.lauzhack26_multiplatform.model.*
-import com.example.lauzhack26_multiplatform.server.repository.ReportRepository
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -9,7 +8,6 @@ import io.ktor.http.*
 import kotlinx.serialization.json.*
 
 class OpenRouteServiceService(
-    private val repository: ReportRepository,
     private val httpClient: HttpClient
 ) {
 
@@ -20,12 +18,7 @@ class OpenRouteServiceService(
             throw IllegalStateException("ORS_API_KEY environment variable is not set. Set it to enable routing via OpenRouteService.")
         }
 
-        val allReports = repository.getAll()
-        val incompatibleReports = allReports.filter { report ->
-            request.profile.incompatibleReportTypes.contains(report.type)
-        }
-
-        val avoidPolygons = buildAvoidPolygons(incompatibleReports)
+        val allAvoidPolygonCoordinates = request.avoidPolygons
 
         val orsProfile = request.profile.orsProfile
 
@@ -37,9 +30,39 @@ class OpenRouteServiceService(
             put("profile", orsProfile)
             put("format", "geojson")
 
-            if (avoidPolygons.isNotEmpty()) {
+            if (allAvoidPolygonCoordinates.isNotEmpty()) {
                 put("options", buildJsonObject {
-                    put("avoid_polygons", avoidPolygons)
+                    // OpenRouteService expects a GeoJSON Polygon or MultiPolygon object
+                    if (allAvoidPolygonCoordinates.size == 1) {
+                        put("avoid_polygons", buildJsonObject {
+                            put("type", "Polygon")
+                            put("coordinates", buildJsonArray {
+                                add(buildJsonArray {
+                                    for (coord in allAvoidPolygonCoordinates[0]) {
+                                        add(buildJsonArray { add(coord.lon); add(coord.lat) })
+                                    }
+                                })
+                            })
+                        })
+                    } else {
+                        // GeoJSON MultiPolygon: coordinates is an array of polygons,
+                        // each polygon is an array of linear rings, each ring is an array of [lon, lat]
+                        put("avoid_polygons", buildJsonObject {
+                            put("type", "MultiPolygon")
+                            put("coordinates", buildJsonArray {
+                                for (polygon in allAvoidPolygonCoordinates) {
+                                    // Each polygon is wrapped in its own array (linear ring level)
+                                    add(buildJsonArray {
+                                        add(buildJsonArray {
+                                            for (coord in polygon) {
+                                                add(buildJsonArray { add(coord.lon); add(coord.lat) })
+                                            }
+                                        })
+                                    })
+                                }
+                            })
+                        })
+                    }
                 })
             }
         }
@@ -74,26 +97,6 @@ class OpenRouteServiceService(
         }
     }
 
-    private fun buildAvoidPolygons(reports: List<Report>): JsonArray {
-        val radiusDegrees = 0.0005 // ~50 meters buffer around each obstacle
-        return buildJsonArray {
-            for (report in reports) {
-                val lat = report.location.lat
-                val lon = report.location.lon
-                // Build a small polygon (square) around the obstacle
-                add(buildJsonArray {
-                    add(buildJsonArray {
-                        add(buildJsonArray { add(lon - radiusDegrees); add(lat - radiusDegrees) })
-                        add(buildJsonArray { add(lon + radiusDegrees); add(lat - radiusDegrees) })
-                        add(buildJsonArray { add(lon + radiusDegrees); add(lat + radiusDegrees) })
-                        add(buildJsonArray { add(lon - radiusDegrees); add(lat + radiusDegrees) })
-                        add(buildJsonArray { add(lon - radiusDegrees); add(lat - radiusDegrees) })
-                    })
-                })
-            }
-        }
-    }
-
     private fun parseCoordinates(json: JsonElement): List<Location> {
         val routes = json.jsonObject["routes"]?.jsonArray ?: return emptyList()
         if (routes.isEmpty()) return emptyList()
@@ -113,7 +116,7 @@ class OpenRouteServiceService(
                     Location(lat = lat, lon = lon)
                 } else null
             }
-        } else if (geometry is kotlinx.serialization.json.JsonPrimitive && geometry.isString) {
+        } else if (geometry is JsonPrimitive && geometry.isString) {
             // Encoded polyline format (Polyline6 encoding used by ORS)
             val encoded = geometry.content
             return decodePolyline6(encoded)

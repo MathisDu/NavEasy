@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 data class RouteRequest(
     val start: Location,
     val end: Location,
-    val profile: MobilityProfile
+    val profile: MobilityProfile,
+    val avoidPolygons: List<List<Location>> = emptyList()
 )

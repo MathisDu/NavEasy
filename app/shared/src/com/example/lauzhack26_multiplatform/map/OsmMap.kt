@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.geometry.Size as GeometrySize
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
@@ -29,7 +28,10 @@ import androidx.compose.ui.unit.sp
 import com.example.lauzhack26_multiplatform.model.Location
 import com.example.lauzhack26_multiplatform.model.ObstacleType
 import com.example.lauzhack26_multiplatform.model.OsmFeature
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -153,9 +155,6 @@ class MapState(
         centerLon = newLon
     }
 
-    companion object {
-        private const val TILE_SIZE = 256
-    }
 }
 
 /**
@@ -172,6 +171,7 @@ fun OsmMap(
     routeCoordinates: List<Location> = emptyList(),
     reportLocations: List<Location> = emptyList(),
     osmFeatures: List<OsmFeature> = emptyList(),
+    avoidPolygonCenters: List<Location> = emptyList(),
     userLocation: Location? = null,
     onCanvasSizeReady: ((IntSize) -> Unit)? = null,
 ) {
@@ -464,6 +464,35 @@ fun OsmMap(
                     radius = 8f,
                     center = Offset(canvasX, canvasY)
                 )
+            }
+
+            // Draw avoid polygons as semi-transparent red circles
+            val radiusDegrees = 0.0002
+            val circlePoints = 16
+            for (center in avoidPolygonCenters) {
+                // Scale longitude radius by cos(lat) so the shape appears circular on the map
+                val lonRadius = radiusDegrees * cos(center.lat * PI / 180.0)
+                val path = Path()
+                var first = true
+                for (i in 0 until circlePoints) {
+                    val angle = 2.0 * PI * i / circlePoints
+                    val corner = Location(
+                        center.lat + radiusDegrees * cos(angle),
+                        center.lon + lonRadius * sin(angle)
+                    )
+                    val (wx, wy) = MercatorProjection.locationToPixel(corner.lat, corner.lon, mapState.zoom)
+                    val cx = (wx + mapState.offset.x.toDouble()).toFloat()
+                    val cy = (wy + mapState.offset.y.toDouble()).toFloat()
+                    if (first) {
+                        path.moveTo(cx, cy)
+                        first = false
+                    } else {
+                        path.lineTo(cx, cy)
+                    }
+                }
+                path.close()
+                drawPath(path, color = Color.Red.copy(alpha = 0.3f))
+                drawPath(path, color = Color.Red, style = Stroke(width = 2f))
             }
         }
 

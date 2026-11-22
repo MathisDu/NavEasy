@@ -1,8 +1,12 @@
 package com.example.lauzhack26_multiplatform.server
 
 import com.example.lauzhack26_multiplatform.server.repository.InMemoryReportRepository
+import com.example.lauzhack26_multiplatform.server.routes.nominatimRoutes
+import com.example.lauzhack26_multiplatform.server.routes.overpassRoutes
 import com.example.lauzhack26_multiplatform.server.routes.reportsRoutes
 import com.example.lauzhack26_multiplatform.server.routes.routeRoutes
+import com.example.lauzhack26_multiplatform.server.service.NominatimService
+import com.example.lauzhack26_multiplatform.server.service.OverpassService
 import com.example.lauzhack26_multiplatform.server.service.OpenRouteServiceService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -48,7 +52,9 @@ fun Application.module() {
             json()
         }
     }
-    val orsService = OpenRouteServiceService(reportRepository, httpClient)
+    val orsService = OpenRouteServiceService(httpClient)
+    val overpassService = OverpassService(httpClient)
+    val nominatimService = NominatimService(httpClient)
 
     routing {
         get("/") {
@@ -57,5 +63,7 @@ fun Application.module() {
 
         reportsRoutes(reportRepository)
         routeRoutes(orsService)
+        overpassRoutes(overpassService)
+        nominatimRoutes(nominatimService)
     }
 }
