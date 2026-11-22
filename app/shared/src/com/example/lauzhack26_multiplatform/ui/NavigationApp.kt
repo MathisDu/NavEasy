@@ -41,7 +41,6 @@ fun NavigationApp(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val showReportForm by viewModel.showReportForm.collectAsState()
     val reportLocation by viewModel.reportLocation.collectAsState()
-    val osmFeatures by viewModel.osmFeatures.collectAsState()
     val searchResultsStart by viewModel.searchResultsStart.collectAsState()
     val isSearchingStart by viewModel.isSearchingStart.collectAsState()
     val searchResultsDestination by viewModel.searchResultsDestination.collectAsState()
@@ -761,7 +760,7 @@ fun SearchBar(
                             .fillMaxWidth()
                             .heightIn(max = 300.dp)
                     ) {
-                        items(searchResults, key = { it.placeId }) { result ->
+                        items(searchResults, key = { result -> "${result.lat}-${result.lon}" }) { result ->
                             SearchResultItem(
                                 result = result,
                                 onClick = {

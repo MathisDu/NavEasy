@@ -17,12 +17,12 @@ import com.example.lauzhack26_multiplatform.model.Report
 import com.example.lauzhack26_multiplatform.model.ReportType
 import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.model.RouteResponse
-import com.example.lauzhack26_multiplatform.resources.Res
 import io.ktor.client.*
 import io.ktor.client.call.body
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.example.lauzhack26_multiplatform.resources.Res
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -89,6 +89,25 @@ class MapViewModel(
     val userLocation: StateFlow<Location?> = _userLocation.asStateFlow()
 
     private var locationTracker: LocationTracker? = null
+
+    // Avoid polygon mode state
+    private val _avoidMode = MutableStateFlow(false)
+    val avoidMode: StateFlow<Boolean> = _avoidMode.asStateFlow()
+
+    // List of avoid polygon centers (each polygon is a square around a center point)
+    private val _avoidPolygonCenters = MutableStateFlow<List<Location>>(emptyList())
+    val avoidPolygonCenters: StateFlow<List<Location>> = _avoidPolygonCenters.asStateFlow()
+
+    // Debounce job for Overpass API calls
+    private var overpassDebounceJob: Job? = null
+
+    // Debounce jobs for Nominatim search
+    private var searchStartDebounceJob: Job? = null
+    private var searchDestinationDebounceJob: Job? = null
+
+    // Store start/end locations for route recalculation when avoid polygons change
+    private var _routeStart: Location? = null
+    private var _routeEnd: Location? = null
 
     init {
         loadOfflineObstacles()
@@ -266,25 +285,6 @@ class MapViewModel(
             }
         }
     }
-
-    // Avoid polygon mode state
-    private val _avoidMode = MutableStateFlow(false)
-    val avoidMode: StateFlow<Boolean> = _avoidMode.asStateFlow()
-
-    // List of avoid polygon centers (each polygon is a square around a center point)
-    private val _avoidPolygonCenters = MutableStateFlow<List<Location>>(emptyList())
-    val avoidPolygonCenters: StateFlow<List<Location>> = _avoidPolygonCenters.asStateFlow()
-
-    // Debounce job for Overpass API calls
-    private var overpassDebounceJob: Job? = null
-
-    // Debounce jobs for Nominatim search
-    private var searchStartDebounceJob: Job? = null
-    private var searchDestinationDebounceJob: Job? = null
-
-    // Store start/end locations for route recalculation when avoid polygons change
-    private var _routeStart: Location? = null
-    private var _routeEnd: Location? = null
 
     // Start location search state
     private val _searchResultsStart = MutableStateFlow<List<NominatimSearchResult>>(emptyList())
@@ -575,7 +575,7 @@ class MapViewModel(
                 if (response.status == HttpStatusCode.OK) {
                     val result = response.body<OverpassQueryResponse>()
                     val features = parseOverpassResponse(result.result)
-                    _osmFeatures.value = features
+                    _allOsmFeatures.value = features
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
@@ -636,7 +636,7 @@ class MapViewModel(
 
             OsmFeature(
                 location = Location(lat = lat, lon = lon),
-                type = "highway=steps",
+                obstacleType = ObstacleType.STAIRS,
                 description = description
             )
         }
