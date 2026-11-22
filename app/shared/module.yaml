@@ -35,12 +35,11 @@ settings:
   kotlin:
     serialization:
       enabled: true
+    freeCompilerArgs:
+      - "-Xexpect-actual-classes"
   compose:
     enabled: true
     resources:
       packageName: com.example.lauzhack26_multiplatform.resources
       # Generate public accessors so other modules (and previews) can use Res.*
       exposedAccessors: true
-  kotlin:
-    serialization:
-      enabled: true

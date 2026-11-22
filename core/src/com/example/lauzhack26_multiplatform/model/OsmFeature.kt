@@ -9,7 +9,14 @@ enum class ObstacleType(
     val label: String,
     val icon: String
 ) {
-    STAIRS("Escalier", "🪜"),
+    STAIRS("Escaliers", "🪜"),
+    WHEELCHAIR_RESTRICTED("Accès limité", "⛔"),
+    BAD_SURFACE("Surface impraticable", "⚠️"),
+    BARRIER("Barrière bloquante", "🚧"),
+    HIGH_KERB("Bordure haute", "🛑"),
+    REVOLVING_DOOR("Porte à tambour", "🚪"),
+    MISSING_TACTILE("Pas de bande podotactile", "🦯"),
+    SILENT_CROSSING("Feu piéton muet", "👁️"),
     COBBLESTONE("Pavés", "🧱"),
     KERB("Bordure", "📐")
 }
