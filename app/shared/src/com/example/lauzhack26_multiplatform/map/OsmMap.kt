@@ -31,6 +31,8 @@ import com.example.lauzhack26_multiplatform.model.OsmFeature
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -38,9 +40,69 @@ import kotlin.math.sqrt
  * Returns the canvas color for an obstacle type.
  */
 private fun ObstacleType.toColor(): Color = when (this) {
-    ObstacleType.STAIRS -> Color(0xFFFF0000)      // Rouge
-    ObstacleType.COBBLESTONE -> Color(0xFF8D6E63) // Marron
-    ObstacleType.KERB -> Color(0xFF757575)        // Gris
+    ObstacleType.STAIRS -> Color(0xFFFF0000)              // Red
+    ObstacleType.WHEELCHAIR_RESTRICTED -> Color(0xFFD32F2F) // Dark red
+    ObstacleType.BAD_SURFACE -> Color(0xFFFFA000)        // Orange
+    ObstacleType.BARRIER -> Color(0xFFE65100)            // Dark orange
+    ObstacleType.HIGH_KERB -> Color(0xFF757575)          // Gray
+    ObstacleType.REVOLVING_DOOR -> Color(0xFF9C27B0)     // Purple
+    ObstacleType.MISSING_TACTILE -> Color(0xFF3F51B5)    // Indigo
+    ObstacleType.SILENT_CROSSING -> Color(0xFF009688)    // Teal
+    ObstacleType.COBBLESTONE -> Color(0xFF8D6E63)        // Brown
+    ObstacleType.KERB -> Color(0xFF9E9E9E)               // Light gray
+}
+
+/**
+ * Calculate the marker radius based on zoom level.
+ * At high zoom (15+), markers are at default size (~10px).
+ * At low zoom (1-5), markers shrink (~4px) so they don't overwhelm the view when zoomed out.
+ */
+private fun markerRadius(zoom: Int, baseRadius: Float = 10f): Float {
+    // Scale proportionally with zoom: higher zoom = larger marker, lower zoom = smaller marker
+    val scale = min(1f, zoom.toFloat() / 15f)
+    return max(4f, baseRadius * scale)
+}
+
+/**
+ * Draw an attractive pin-style marker with shadow, colored outer ring, white border, and inner dot.
+ */
+private fun DrawScope.drawMarker(
+    center: Offset,
+    color: Color,
+    zoom: Int
+) {
+    val radius = markerRadius(zoom)
+    val shadowRadius = radius * 1.3f
+    val borderRadius = radius * 0.75f
+    val innerRadius = radius * 0.35f
+
+    // Shadow
+    drawCircle(
+        color = Color(0x33000000),
+        radius = shadowRadius,
+        center = center.copy(x = center.x + 2f, y = center.y + 3f)
+    )
+
+    // Outer colored circle
+    drawCircle(
+        color = color,
+        radius = radius,
+        center = center
+    )
+
+    // White border ring
+    drawCircle(
+        color = Color.White,
+        radius = borderRadius,
+        center = center
+    )
+
+    // Inner colored dot
+    drawCircle(
+        color = color,
+        radius = innerRadius,
+        center = center
+    )
 }
 
 /**
@@ -238,7 +300,7 @@ fun OsmMap(
                     detectTransformGestures { centroid, _, zoomChange, _ ->
                         if (zoomChange != 1.0f) {
                             val oldZoom = mapState.zoom
-                            val newZoom = kotlin.math.max(1, kotlin.math.min(19, (oldZoom * zoomChange).toInt()))
+                            val newZoom = max(1, min(19, (oldZoom * zoomChange).toInt()))
 
                             if (newZoom != oldZoom) {
                                 // Try to keep the centroid point under the same location
@@ -284,7 +346,7 @@ fun OsmMap(
 
                                 if (delta != 0f) {
                                     val zoomDirection = if (delta > 0) -1 else 1
-                                    val newZoom = kotlin.math.max(1, kotlin.math.min(19, mapState.zoom + zoomDirection))
+                                    val newZoom = max(1, min(19, mapState.zoom + zoomDirection))
 
                                     if (newZoom != mapState.zoom) {
                                         // a) Trouver la position actuelle du curseur de la souris
@@ -387,61 +449,51 @@ fun OsmMap(
             drawRoute(routeCoordinates, mapState, Color(0xFF1565C0), 5f)
         }
 
-        // Draw start and end markers
+        // Draw start and end markers with attractive pin-style markers
         if (routeCoordinates.isNotEmpty()) {
             val startLoc = routeCoordinates.first()
             val (sx, sy) = MercatorProjection.locationToPixel(startLoc.lat, startLoc.lon, mapState.zoom)
-            drawCircle(
+            drawMarker(
+                center = Offset((sx + mapState.offset.x.toDouble()).toFloat(), (sy + mapState.offset.y.toDouble()).toFloat()),
                 color = Color(0xFF4CAF50),
-                radius = 8f,
-                center = Offset((sx + mapState.offset.x.toDouble()).toFloat(), (sy + mapState.offset.y.toDouble()).toFloat())
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 4f,
-                center = Offset((sx + mapState.offset.x.toDouble()).toFloat(), (sy + mapState.offset.y.toDouble()).toFloat())
+                zoom = mapState.zoom
             )
         }
         if (routeCoordinates.size > 1) {
             val endLoc = routeCoordinates.last()
             val (ex, ey) = MercatorProjection.locationToPixel(endLoc.lat, endLoc.lon, mapState.zoom)
-            drawCircle(
-                color = Color(0xFFFF0000),
-                radius = 8f,
-                center = Offset((ex + mapState.offset.x.toDouble()).toFloat(), (ey + mapState.offset.y.toDouble()).toFloat())
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 4f,
-                center = Offset((ex + mapState.offset.x.toDouble()).toFloat(), (ey + mapState.offset.y.toDouble()).toFloat())
+            drawMarker(
+                center = Offset((ex + mapState.offset.x.toDouble()).toFloat(), (ey + mapState.offset.y.toDouble()).toFloat()),
+                color = Color(0xFFE53935),
+                zoom = mapState.zoom
             )
         }
 
-            // Draw report markers
+            // Draw report markers with attractive pin-style markers
             for (location in reportLocations) {
                 val (worldX, worldY) = MercatorProjection.locationToPixel(
                     location.lat, location.lon, mapState.zoom
                 )
                 val canvasX = (worldX + mapState.offset.x.toDouble()).toFloat()
                 val canvasY = (worldY + mapState.offset.y.toDouble()).toFloat()
-                drawCircle(
-                    color = Color.Red,
-                    radius = 8f,
-                    center = Offset(canvasX, canvasY)
+                drawMarker(
+                    center = Offset(canvasX, canvasY),
+                    color = Color(0xFFE53935),
+                    zoom = mapState.zoom
                 )
             }
 
-            // Draw OSM obstacle features with color by type
+            // Draw OSM obstacle features with attractive pin-style markers colored by type
             for (feature in osmFeatures) {
                 val (worldX, worldY) = MercatorProjection.locationToPixel(
                     feature.location.lat, feature.location.lon, mapState.zoom
                 )
                 val canvasX = (worldX + mapState.offset.x.toDouble()).toFloat()
                 val canvasY = (worldY + mapState.offset.y.toDouble()).toFloat()
-                drawCircle(
+                drawMarker(
+                    center = Offset(canvasX, canvasY),
                     color = feature.obstacleType.toColor(),
-                    radius = 12f,
-                    center = Offset(canvasX, canvasY)
+                    zoom = mapState.zoom
                 )
             }
 

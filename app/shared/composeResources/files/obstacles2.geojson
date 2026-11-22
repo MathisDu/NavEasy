@@ -1,0 +1,386 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-11-22T05:41:17Z",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "way/35420846",
+      "properties": {
+        "@id": "way/35420846",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5196735,
+          46.5235564
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/243876204",
+      "properties": {
+        "@id": "way/243876204",
+        "access": "permissive",
+        "bicycle": "no",
+        "foot": "yes",
+        "highway": "path",
+        "horse": "no",
+        "incline": "down",
+        "motor_vehicle": "no",
+        "motorcar": "no",
+        "motorcycle": "no",
+        "surface": "unpaved",
+        "tracktype": "grade1",
+        "wheelchair": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.511364,
+          46.5221013
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/637079923",
+      "properties": {
+        "@id": "way/637079923",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5114098,
+          46.5194717
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/981853623",
+      "properties": {
+        "@id": "way/981853623",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.519826,
+          46.5239025
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "way/1169247865",
+      "properties": {
+        "@id": "way/1169247865",
+        "highway": "steps",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5097695,
+          46.5207214
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/10212343294",
+      "properties": {
+        "@id": "node/10212343294",
+        "barrier": "kerb",
+        "kerb": "raised",
+        "tactile_paving": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5197632,
+          46.5194652
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443242",
+      "properties": {
+        "@id": "node/13096443242",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5108881,
+          46.5211515
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443243",
+      "properties": {
+        "@id": "node/13096443243",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5109334,
+          46.5211695
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443244",
+      "properties": {
+        "@id": "node/13096443244",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.510955,
+          46.5211781
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443245",
+      "properties": {
+        "@id": "node/13096443245",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5110048,
+          46.5211979
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443247",
+      "properties": {
+        "@id": "node/13096443247",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5112179,
+          46.5211738
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443248",
+      "properties": {
+        "@id": "node/13096443248",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5112586,
+          46.5211421
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443249",
+      "properties": {
+        "@id": "node/13096443249",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5112772,
+          46.5211275
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443250",
+      "properties": {
+        "@id": "node/13096443250",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5113153,
+          46.5210978
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443258",
+      "properties": {
+        "@id": "node/13096443258",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.510902,
+          46.5208431
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443259",
+      "properties": {
+        "@id": "node/13096443259",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5108052,
+          46.5209218
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443261",
+      "properties": {
+        "@id": "node/13096443261",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5108525,
+          46.5208897
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443262",
+      "properties": {
+        "@id": "node/13096443262",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5108702,
+          46.5208773
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443263",
+      "properties": {
+        "@id": "node/13096443263",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5111476,
+          46.5208235
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443264",
+      "properties": {
+        "@id": "node/13096443264",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5112778,
+          46.5208747
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443266",
+      "properties": {
+        "@id": "node/13096443266",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5112214,
+          46.5208605
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13096443267",
+      "properties": {
+        "@id": "node/13096443267",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5111931,
+          46.5208485
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13283767667",
+      "properties": {
+        "@id": "node/13283767667",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5118457,
+          46.5214102
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node/13283767668",
+      "properties": {
+        "@id": "node/13283767668",
+        "barrier": "kerb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.5118232,
+          46.5214412
+        ]
+      }
+    }
+  ]
+}

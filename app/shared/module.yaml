@@ -21,6 +21,7 @@ dependencies:
 dependencies@android:
   - $compose.uiTooling
   - $libs.ktor.client.android
+  - $libs.play.services.location
 
 dependencies@iosArm64:
   - $libs.ktor.client.darwin
@@ -37,6 +38,8 @@ settings:
       enabled: true
     freeCompilerArgs:
       - -Xexpect-actual-classes
+    freeCompilerArgs:
+      - "-Xexpect-actual-classes"
   compose:
     enabled: true
     resources:

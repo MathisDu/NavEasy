@@ -14,7 +14,6 @@ import com.example.lauzhack26_multiplatform.model.NominatimSearchResult
 import com.example.lauzhack26_multiplatform.model.ObstacleType
 import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.Report
-import com.example.lauzhack26_multiplatform.model.ReportType
 import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.model.RouteResponse
 import com.example.lauzhack26_multiplatform.model.Severity
@@ -48,12 +47,12 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.math.pow
 import kotlin.time.Duration.Companion.milliseconds
 
 class MapViewModel(
     private val httpClient: HttpClient,
-    private val serverUrl: String = "http://localhost:8081"
+    private val serverUrl: String = "http://localhost:8081",
+    initialLocationTracker: LocationTracker? = null
 ) : ViewModel() {
 
     private val _selectedProfile = MutableStateFlow(MobilityProfile.WHEELCHAIR)
@@ -90,7 +89,7 @@ class MapViewModel(
     private val _userLocation = MutableStateFlow<Location?>(null)
     val userLocation: StateFlow<Location?> = _userLocation.asStateFlow()
 
-    private var locationTracker: LocationTracker? = null
+    private var locationTracker: LocationTracker? = initialLocationTracker
 
     // Avoid polygon mode state
     private val _avoidMode = MutableStateFlow(false)
@@ -99,9 +98,6 @@ class MapViewModel(
     // List of avoid polygon centers (each polygon is a square around a center point)
     private val _avoidPolygonCenters = MutableStateFlow<List<Location>>(emptyList())
     val avoidPolygonCenters: StateFlow<List<Location>> = _avoidPolygonCenters.asStateFlow()
-
-    // Debounce job for Overpass API calls
-    private var overpassDebounceJob: Job? = null
 
     // Debounce jobs for Nominatim search
     private var searchStartDebounceJob: Job? = null
@@ -129,13 +125,15 @@ class MapViewModel(
     private fun loadOfflineObstacles() {
         viewModelScope.launch {
             try {
-                val bytes = Res.readBytes("files/obstacles.geojson")
+                val bytes = Res.readBytes("files/obstacles1.geojson")
                 val jsonText = bytes.decodeToString()
                 val features = parseGeoJsonObstacles(jsonText)
                 _allOsmFeatures.value = features
-                println("[Obstacles] ${features.size} obstacles chargés depuis le fichier hors-ligne")
+                println("[Obstacles] ${features.size} obstacles loaded from offline file")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                println("[Obstacles] Erreur lors du chargement du fichier hors-ligne: ${e.message}")
+                println("[Obstacles] Error loading offline file: ${e.message}")
                 _allOsmFeatures.value = emptyList()
             }
         }
@@ -178,16 +176,50 @@ class MapViewModel(
 
     /**
      * Categorize a GeoJSON feature by its OSM tags.
+     * Returns the appropriate ObstacleType based on tag values, or null if not a recognized obstacle.
      */
     private fun categorizeByTags(properties: JsonObject): ObstacleType? {
         val highway = properties["highway"]?.jsonPrimitive?.content
+        val wheelchair = properties["wheelchair"]?.jsonPrimitive?.content
         val surface = properties["surface"]?.jsonPrimitive?.content
+        val smoothness = properties["smoothness"]?.jsonPrimitive?.content
         val barrier = properties["barrier"]?.jsonPrimitive?.content
+        val kerb = properties["kerb"]?.jsonPrimitive?.content
+        val door = properties["door"]?.jsonPrimitive?.content
+        val tactilePaving = properties["tactile_paving"]?.jsonPrimitive?.content
+        val crossingSignalsSound = properties["crossing:signals:sound"]?.jsonPrimitive?.content
 
         return when {
+            // Stairs
             highway == "steps" -> ObstacleType.STAIRS
-            surface == "cobblestone" || surface == "sett" -> ObstacleType.COBBLESTONE
+
+            // Revolving door
+            door == "revolving" -> ObstacleType.REVOLVING_DOOR
+
+            // Kerb barrier (high kerb) - barrier is "kerb" and kerb is not flush/lowered
+            barrier == "kerb" && kerb != null && kerb != "flush" && kerb != "lowered" -> ObstacleType.HIGH_KERB
+
+            // Blocking barriers
+            barrier == "stile" || barrier == "turnstile" || barrier == "motorcycle_barrier" -> ObstacleType.BARRIER
+
+            // Wheelchair access restriction
+            wheelchair == "no" || wheelchair == "limited" -> ObstacleType.WHEELCHAIR_RESTRICTED
+
+            // Bad surfaces
+            surface == "cobblestone" || surface == "sett" || surface == "sand" || surface == "gravel" || surface == "dirt" -> ObstacleType.BAD_SURFACE
+
+            // Smoothness indicates bad surface
+            smoothness == "bad" || smoothness == "very_bad" || smoothness == "horrible" || smoothness == "impassable" -> ObstacleType.BAD_SURFACE
+
+            // Missing tactile paving at crossings
+            highway == "crossing" && tactilePaving == "no" -> ObstacleType.MISSING_TACTILE
+
+            // Silent crossing (no sound signals)
+            highway == "crossing" && crossingSignalsSound == "no" -> ObstacleType.SILENT_CROSSING
+
+            // Legacy: plain kerb without specific kerb tag
             barrier == "kerb" -> ObstacleType.KERB
+
             else -> null
         }
     }
@@ -205,35 +237,82 @@ class MapViewModel(
                 val incline = properties["incline"]?.jsonPrimitive?.content
                 val handrail = properties["handrail"]?.jsonPrimitive?.content
                 val parts = mutableListOf<String>()
-                parts.add("Escalier")
-                if (stepCount != null) parts.add("$stepCount marches")
-                if (incline != null) parts.add(if (incline == "up") "montant" else "descendant")
-                if (handrail == "yes") parts.add("main courante")
+                parts.add("Stairs")
+                if (stepCount != null) parts.add("$stepCount steps")
+                if (incline != null) parts.add(if (incline == "up") "ascending" else "descending")
+                if (handrail == "yes") parts.add("handrail")
                 parts.joinToString(" • ")
             }
+            ObstacleType.WHEELCHAIR_RESTRICTED -> {
+                val wheelchair = properties["wheelchair"]?.jsonPrimitive?.content
+                "Wheelchair access: $wheelchair"
+            }
+            ObstacleType.BAD_SURFACE -> {
+                val surface = properties["surface"]?.jsonPrimitive?.content
+                val smoothness = properties["smoothness"]?.jsonPrimitive?.content
+                val parts = mutableListOf<String>()
+                if (surface != null) parts.add("Surface: $surface")
+                if (smoothness != null) parts.add("Roughness: $smoothness")
+                if (parts.isEmpty()) "Impassable surface" else parts.joinToString(" • ")
+            }
+            ObstacleType.BARRIER -> {
+                val barrier = properties["barrier"]?.jsonPrimitive?.content
+                "Barrier: $barrier"
+            }
+            ObstacleType.HIGH_KERB -> {
+                val kerb = properties["kerb"]?.jsonPrimitive?.content
+                "High kerb${if (kerb != null) " ($kerb)" else ""}"
+            }
+            ObstacleType.REVOLVING_DOOR -> "Revolving door"
+            ObstacleType.MISSING_TACTILE -> "Crossing without tactile paving"
+            ObstacleType.SILENT_CROSSING -> "Crossing without audio signal"
             ObstacleType.COBBLESTONE -> {
                 val surface = properties["surface"]?.jsonPrimitive?.content
                 "Surface $surface"
             }
-            ObstacleType.KERB -> "Bordure de trottoir"
+            ObstacleType.KERB -> "Kerb"
         }
     }
 
     /**
-     * Filter obstacles based on the selected mobility profile.
+     * Filter obstacles for display on the Canvas based on the selected mobility profile.
+     * Returns both blockers (physically impassable) and warnings (informational) so the user
+     * can see all relevant obstacles, even if only blockers are sent to the routing service.
      */
     private fun filterFeaturesByProfile(
         allFeatures: List<OsmFeature>,
         profile: MobilityProfile
     ): List<OsmFeature> {
-        return when (profile) {
-            MobilityProfile.WHEELCHAIR -> allFeatures
-            MobilityProfile.CRUTCHES -> allFeatures
-            MobilityProfile.VISUAL_IMPAIRMENT -> allFeatures.filter {
-                it.obstacleType == ObstacleType.KERB
-            }
-            MobilityProfile.STANDARD -> emptyList()
+        val displayTypes = when (profile) {
+            MobilityProfile.WHEELCHAIR -> setOf(
+                // Blockers
+                ObstacleType.STAIRS,
+                ObstacleType.WHEELCHAIR_RESTRICTED,
+                ObstacleType.BARRIER,
+                ObstacleType.HIGH_KERB,
+                ObstacleType.REVOLVING_DOOR,
+                // Warnings
+                ObstacleType.BAD_SURFACE,
+                ObstacleType.COBBLESTONE,
+                ObstacleType.KERB
+            )
+            MobilityProfile.CRUTCHES -> setOf(
+                // Blockers
+                ObstacleType.STAIRS,
+                ObstacleType.REVOLVING_DOOR,
+                // Warnings
+                ObstacleType.BAD_SURFACE,
+                ObstacleType.HIGH_KERB
+            )
+            MobilityProfile.VISUAL_IMPAIRMENT -> setOf(
+                // Warnings only — no blockers sent to ORS
+                ObstacleType.MISSING_TACTILE,
+                ObstacleType.SILENT_CROSSING,
+                ObstacleType.REVOLVING_DOOR
+            )
+            MobilityProfile.STANDARD -> emptySet()
         }
+        return allFeatures.filter { it.obstacleType in displayTypes }
     }
 
     private fun getLocationTracker(): LocationTracker? {
@@ -252,7 +331,7 @@ class MapViewModel(
      */
     fun centerOnUser(mapState: MapState, canvasSize: IntSize) {
         val tracker = getLocationTracker() ?: run {
-            _errorMessage.value = "Localisation non disponible sur cette plateforme"
+            _errorMessage.value = "Location not available on this platform"
             return
         }
         viewModelScope.launch {
@@ -293,14 +372,12 @@ class MapViewModel(
     val searchResultsStart: StateFlow<List<NominatimSearchResult>> = _searchResultsStart.asStateFlow()
 
     private val _isSearchingStart = MutableStateFlow(false)
-    val isSearchingStart: StateFlow<Boolean> = _isSearchingStart.asStateFlow()
 
     // Destination search state
     private val _searchResultsDestination = MutableStateFlow<List<NominatimSearchResult>>(emptyList())
     val searchResultsDestination: StateFlow<List<NominatimSearchResult>> = _searchResultsDestination.asStateFlow()
 
     private val _isSearchingDestination = MutableStateFlow(false)
-    val isSearchingDestination: StateFlow<Boolean> = _isSearchingDestination.asStateFlow()
     private val _showReportMode = MutableStateFlow(false)
     val showReportMode: StateFlow<Boolean> = _showReportMode.asStateFlow()
 
@@ -374,8 +451,18 @@ class MapViewModel(
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val avoidPolygons = buildAvoidPolygons()
-                val request = RouteRequest(start, end, _selectedProfile.value, avoidPolygons)
+                val profile = _selectedProfile.value
+
+                // Generate avoidance polygons only for physically impassable OSM blockers
+                val osmPolygons = getBlockerOsmPolygons(profile, _allOsmFeatures.value)
+
+                // Generate manual avoidance polygons from user-placed centers
+                val manualPolygons = buildManualAvoidPolygons()
+
+                // Combine both lists of polygons
+                val combinedPolygons = osmPolygons + manualPolygons
+
+                val request = RouteRequest(start, end, profile, combinedPolygons)
                 val response = httpClient.post("$serverUrl/api/route") {
                     contentType(ContentType.Application.Json)
                     setBody(request)
@@ -384,13 +471,7 @@ class MapViewModel(
                     val routeResponse = response.body<RouteResponse>()
                     _route.value = routeResponse.coordinates
                 } else {
-                    // Try to read the error message from the server response
-                    val errorBody = try {
-                        response.body<String>()
-                    } catch (_: Exception) {
-                        "<unable to read error>"
-                    }
-                    _errorMessage.value = "Error calculating route (${response.status}): $errorBody"
+                    _errorMessage.value = "No easily accessible route available for this type of disability."
                 }
             } catch (e: Exception) {
                 if (e !is CancellationException) {
@@ -402,10 +483,6 @@ class MapViewModel(
                 _isLoading.value = false
             }
         }
-    }
-
-    fun clearRoute() {
-        _route.value = emptyList()
     }
 
     fun enterReportMode() {
@@ -485,8 +562,6 @@ class MapViewModel(
                     _selectedReport.value = null
                     _reports.value = _reports.value.filter { it.id != reportId }
                 }
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Exception) {
                 // Revert optimistic update on error
                 if (optimisticReport != null) {
@@ -497,17 +572,14 @@ class MapViewModel(
                     }
                 }
                 _errorMessage.value = "Error voting: ${e.message}"
+                if (e !is CancellationException) {
+                    _errorMessage.value = "Error voting: ${e.message}"
+                } else {
+                    throw e
+                }
             } finally {
                 voteInFlight.remove(reportId)
             }
-        }
-    }
-
-    fun toggleAvoidMode() {
-        _avoidMode.value = !_avoidMode.value
-        // Clear avoid polygons when disabling avoid mode
-        if (!_avoidMode.value) {
-            _avoidPolygonCenters.value = emptyList()
         }
     }
 
@@ -521,10 +593,57 @@ class MapViewModel(
     }
 
     /**
-     * Build the list of avoid polygons (as GeoJSON-style coordinate rings) from the stored centers.
+     * Generate avoidance polygons (bounding boxes) only for physically impassable obstacles
+     * (Blockers) that must be sent to OpenRouteService.
+     * Warnings like BAD_SURFACE or MISSING_TACTILE are excluded to avoid absurd detours,
+     * because ORS treats avoid_polygons as strict walls.
+     *
+     * Returns a list of closed polygons (5 points each: top-left, top-right, bottom-right, bottom-left, top-left).
+     */
+    private fun getBlockerOsmPolygons(
+        profile: MobilityProfile,
+        features: List<OsmFeature>
+    ): List<List<Location>> {
+        // Blockers: physically impassable obstacles that ORS must route around
+        val blockerTypes = when (profile) {
+            MobilityProfile.WHEELCHAIR -> setOf(
+                ObstacleType.STAIRS,
+                ObstacleType.BARRIER,
+                ObstacleType.REVOLVING_DOOR,
+                ObstacleType.HIGH_KERB,
+                ObstacleType.WHEELCHAIR_RESTRICTED
+            )
+            MobilityProfile.CRUTCHES -> setOf(
+                ObstacleType.STAIRS,
+                ObstacleType.REVOLVING_DOOR
+            )
+            MobilityProfile.VISUAL_IMPAIRMENT -> emptySet()
+            MobilityProfile.STANDARD -> emptySet()
+        }
+
+        // Filter features that are physically impassable blockers
+        val blockerFeatures = features.filter { it.obstacleType in blockerTypes }
+
+        // Generate bounding-box polygons around each blocker obstacle
+        val radiusDegrees = 0.0005 // ~50 meters
+        return blockerFeatures.map { feature ->
+            val lat = feature.location.lat
+            val lon = feature.location.lon
+            listOf(
+                Location(lat + radiusDegrees, lon - radiusDegrees),  // top-left
+                Location(lat + radiusDegrees, lon + radiusDegrees),  // top-right
+                Location(lat - radiusDegrees, lon + radiusDegrees),  // bottom-right
+                Location(lat - radiusDegrees, lon - radiusDegrees),  // bottom-left
+                Location(lat + radiusDegrees, lon - radiusDegrees)   // close: top-left
+            )
+        }
+    }
+
+    /**
+     * Build the list of avoid polygons from manually placed polygon centers.
      * Each polygon is a small circle (approximated by 16 points) around the center point.
      */
-    private fun buildAvoidPolygons(): List<List<Location>> {
+    private fun buildManualAvoidPolygons(): List<List<Location>> {
         val radiusDegrees = 0.0002 // ~20 meters
         val points = 16
         return _avoidPolygonCenters.value.map { center ->
@@ -643,106 +762,6 @@ class MapViewModel(
         _searchResultsDestination.value = emptyList()
     }
 
-    /**
-     * Fetch staircase features from OpenStreetMap using the Overpass API via the backend proxy.
-     * Uses debouncing to avoid spamming requests when zooming/panning.
-     * @param centerLat center latitude of the map viewport
-     * @param centerLon center longitude of the map viewport
-     * @param zoom current zoom level
-     */
-    fun loadStepsFromOverpass(centerLat: Double, centerLon: Double, zoom: Int) {
-        // Cancel any pending debounced request
-        overpassDebounceJob?.cancel()
-
-        overpassDebounceJob = viewModelScope.launch {
-            // Wait 1 second after the last zoom/pan before making the request
-            delay(1000.milliseconds)
-
-            try {
-                // Calculate bounding box from center and zoom
-                val (minLat, minLon, maxLat, maxLon) = calculateBoundingBox(centerLat, centerLon, zoom)
-
-                // Build Overpass API query
-                val query = """
-                    [out:json];
-                    node["highway"="steps"]($minLat,$minLon,$maxLat,$maxLon);
-                    out;
-                """.trimIndent()
-
-                // Send query through the backend proxy to avoid CORS issues
-                val response = httpClient.post("$serverUrl/api/overpass") {
-                    contentType(ContentType.Application.Json)
-                    setBody(OverpassQueryRequest(query))
-                }
-                if (response.status == HttpStatusCode.OK) {
-                    val result = response.body<OverpassQueryResponse>()
-                    val features = parseOverpassResponse(result.result)
-                    _allOsmFeatures.value = features
-                }
-            } catch (e: Exception) {
-                if (e !is CancellationException) {
-                    // Silently fail - OSM features are optional
-                    e.printStackTrace()
-                } else {
-                    throw e
-                }
-            }
-        }
-    }
-
-
-    /**
-     * Calculate bounding box from map center and zoom level.
-     * Returns Pair of (minLat, minLon, maxLat, maxLon).
-     */
-    private fun calculateBoundingBox(
-        centerLat: Double,
-        centerLon: Double,
-        zoom: Int
-    ): BoundingBox {
-        // Approximate degrees per pixel at this zoom level
-        val degreesPerPixel = 360.0 / (256.0 * 2.0.pow(zoom.toDouble()))
-        // Assume a viewport of ~1000x1000 pixels
-        val viewportPixels = 1000.0
-        val latDelta = (viewportPixels * degreesPerPixel) * 0.6
-        val lonDelta = (viewportPixels * degreesPerPixel) * 0.6 / cos(centerLat * PI / 180.0)
-
-        return BoundingBox(
-            centerLat - latDelta,
-            centerLon - lonDelta,
-            centerLat + latDelta,
-            centerLon + lonDelta
-        )
-    }
-
-
-    /**
-     * Parse Overpass API JSON response into a list of OsmFeature.
-     */
-    private fun parseOverpassResponse(jsonText: String): List<OsmFeature> {
-        val element = overpassJson.parseToJsonElement(jsonText)
-
-        // Overpass response structure: { "elements": [ { "lat": ..., "lon": ..., "tags": { ... } } ] }
-        val rootObj = element.jsonObject
-        val elements = (rootObj["elements"] as? JsonArray) ?: return emptyList()
-
-        return elements.mapNotNull { elem: JsonElement ->
-            val nodeObj = elem.jsonObject
-            val lat = nodeObj["lat"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
-            val lon = nodeObj["lon"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
-            val tags = nodeObj["tags"]?.jsonObject ?: return@mapNotNull null
-
-            val ref = tags["ref"]?.jsonPrimitive?.content ?: ""
-            val name = tags["name"]?.jsonPrimitive?.content ?: ""
-            val description = if (name.isNotEmpty()) name else if (ref.isNotEmpty()) "Stairs (ref: $ref)" else "Stairs"
-
-            OsmFeature(
-                location = Location(lat = lat, lon = lon),
-                obstacleType = ObstacleType.STAIRS,
-                description = description
-            )
-        }
-    }
     @Serializable
     data class ReportRequest(
         val category: String,
@@ -756,32 +775,11 @@ class MapViewModel(
 
 
 @Serializable
-data class OverpassQueryRequest(val data: String)
-
-@Serializable
-data class OverpassQueryResponse(val result: String)
-
-@Serializable
 data class NominatimSearchRequest(val query: String)
 
 @Serializable
 data class NominatimSearchResponse(val result: String)
 
-data class BoundingBox(
-    val minLat: Double,
-    val minLon: Double,
-    val maxLat: Double,
-    val maxLon: Double
-)
-
-@Serializable
-data class ReportRequest(
-    val type: ReportType,
-    val description: String,
-    val location: Location
-)
-
 // Shared Json instances to avoid redundant creation on each parse
 val nominatimJson = Json { ignoreUnknownKeys = true }
-val overpassJson = Json { ignoreUnknownKeys = true }
 

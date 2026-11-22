@@ -11,6 +11,7 @@ import kotlin.js.js
  * Takes a success callback (lat, lon) and an error callback, then invokes the browser API.
  */
 @OptIn(ExperimentalWasmJsInterop::class)
+@Suppress("UNUSED_PARAMETER")
 private fun requestGeolocationPosition(
     onSuccess: (Double, Double) -> Unit,
     onError: () -> Unit
@@ -52,4 +53,4 @@ actual class LocationTracker {
     }
 }
 
-actual fun createLocationTracker(): LocationTracker = LocationTracker()
+actual fun createLocationTracker(): LocationTracker? = LocationTracker()
