@@ -36,10 +36,10 @@ CREATE INDEX idx_reports_location ON reports USING GIST (
 );
 
 -- Grant table privileges to the anon role (required for Supabase REST API access)
--- DELETE is intentionally excluded — reports are resolved via voting (PATCH), not direct deletion
-GRANT SELECT, INSERT ON public.reports TO anon;
-GRANT SELECT, INSERT ON public.reports TO authenticated;
-GRANT SELECT ON public.reports TO service_role;
+-- The server uses the anon key, so it needs DELETE to remove reports when vote threshold is reached
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.reports TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.reports TO authenticated;
+GRANT SELECT, DELETE ON public.reports TO service_role;
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
@@ -55,7 +55,17 @@ CREATE POLICY "Allow public insert"
     TO anon
     WITH CHECK (true);
 
--- DELETE policy is intentionally not created — reports are resolved via voting (PATCH), not direct deletion
+CREATE POLICY "Allow public update for voting"
+    ON public.reports FOR UPDATE
+    TO anon
+    USING (true)
+    WITH CHECK (true);
+
+-- The server uses the anon key to delete reports when vote threshold is reached
+CREATE POLICY "Allow server delete via anon"
+    ON public.reports FOR DELETE
+    TO anon
+    USING (true);
 
 -- RLS policies for authenticated role
 CREATE POLICY "Allow authenticated read access"
@@ -68,4 +78,13 @@ CREATE POLICY "Allow authenticated insert"
     TO authenticated
     WITH CHECK (true);
 
--- DELETE policy is intentionally not created — reports are resolved via voting (PATCH), not direct deletion
+CREATE POLICY "Allow authenticated update for voting"
+    ON public.reports FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated delete"
+    ON public.reports FOR DELETE
+    TO authenticated
+    USING (true);

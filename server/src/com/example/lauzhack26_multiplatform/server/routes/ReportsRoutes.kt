@@ -13,8 +13,8 @@ import io.ktor.server.routing.*
 import java.time.Instant
 import java.time.ZoneOffset
 
-// Threshold: when resolved_votes reaches this number, the report is marked as resolved
-private const val VOTE_THRESHOLD = 5
+// Threshold: when resolved_votes reaches this number, the report is deleted
+private const val VOTE_THRESHOLD = 3
 
 fun Route.reportsRoutes(repository: ReportRepository) {
 
@@ -77,10 +77,14 @@ fun Route.reportsRoutes(repository: ReportRepository) {
         val afterVote = repository.incrementVote(id, "resolve")
             ?: throw Exception("Failed to vote on report")
         
-        // Check if threshold is reached — if so, mark as resolved
-        if (afterVote.resolvedVotes >= VOTE_THRESHOLD && afterVote.status != ReportStatus.RESOLVED) {
-            val updated = repository.updateStatus(id, ReportStatus.RESOLVED) ?: afterVote
-            call.respond(updated)
+        // Check if threshold is reached — if so, delete the report
+        if (afterVote.resolvedVotes >= VOTE_THRESHOLD) {
+            val deleted = repository.remove(id)
+            if (deleted) {
+                call.respond(HttpStatusCode.NoContent)
+            } else {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to delete report"))
+            }
         } else {
             call.respond(afterVote)
         }

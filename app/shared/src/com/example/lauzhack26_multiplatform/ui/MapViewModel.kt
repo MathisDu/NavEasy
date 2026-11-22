@@ -307,6 +307,13 @@ class MapViewModel(
     private val _selectedReport = MutableStateFlow<Report?>(null)
     val selectedReport: StateFlow<Report?> = _selectedReport.asStateFlow()
 
+    // Track in-flight vote requests to prevent double-voting and stacked optimistic updates
+    private val voteInFlight = mutableSetOf<String>()
+
+    // Track reports that have already been voted on by the user
+    private val _votedReports = MutableStateFlow<Set<String>>(emptySet())
+    val votedReports: StateFlow<Set<String>> = _votedReports.asStateFlow()
+
     private val _osmFeatures = MutableStateFlow<List<OsmFeature>>(emptyList())
     val osmFeatures: StateFlow<List<OsmFeature>> = _osmFeatures.asStateFlow()
 
@@ -434,27 +441,64 @@ class MapViewModel(
     }
 
     fun voteOnReport(reportId: String) {
+        // Prevent double-voting: if already voted or a vote is already in-flight, ignore
+        if (_votedReports.value.contains(reportId)) {
+            return
+        }
+        if (!voteInFlight.add(reportId)) {
+            return
+        }
+
+        // Immediately mark as voted so the UI button disables on click
+        _votedReports.value = _votedReports.value + reportId
+
         viewModelScope.launch {
-            _isLoading.value = true
+            // Optimistic update: immediately increment the vote count in the UI
+            val previousSelectedReport = _selectedReport.value
+            val optimisticReport = previousSelectedReport?.takeIf { it.id == reportId }?.let {
+                it.copy(resolvedVotes = it.resolvedVotes + 1)
+            }
+
             try {
+
+                if (optimisticReport != null) {
+                    _selectedReport.value = optimisticReport
+                    // Also update the report in the background list so the map marker stays in sync
+                    _reports.value = _reports.value.map { r ->
+                        if (r.id == reportId) optimisticReport else r
+                    }
+                }
+
                 val response = httpClient.patch("$serverUrl/api/reports/$reportId") {
                     contentType(ContentType.Application.Json)
                 }
+
                 if (response.status == HttpStatusCode.OK) {
-                    loadReports()
-                    // Update the selected report if it's still open
-                    _selectedReport.value?.let { current ->
-                        if (current.id == reportId) {
-                            _selectedReport.value = response.body<Report>()
-                        }
+                    // Server returned the updated report — sync both the dialog and the list
+                    val updatedReport = response.body<Report>()
+                    _selectedReport.value = updatedReport
+                    _reports.value = _reports.value.map { r ->
+                        if (r.id == reportId) updatedReport else r
                     }
+                } else if (response.status == HttpStatusCode.NoContent) {
+                    // Report was deleted (vote threshold reached) — remove from UI immediately
+                    _selectedReport.value = null
+                    _reports.value = _reports.value.filter { it.id != reportId }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                // Revert optimistic update on error
+                if (optimisticReport != null) {
+                    val reverted = optimisticReport.copy(resolvedVotes = optimisticReport.resolvedVotes - 1)
+                    _selectedReport.value = reverted
+                    _reports.value = _reports.value.map { r ->
+                        if (r.id == reportId) reverted else r
+                    }
+                }
                 _errorMessage.value = "Error voting: ${e.message}"
             } finally {
-                _isLoading.value = false
+                voteInFlight.remove(reportId)
             }
         }
     }

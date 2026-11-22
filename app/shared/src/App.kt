@@ -75,9 +75,12 @@ fun App() {
                 )
             }
         } else {
+            // At this point, viewModel and mapState are guaranteed non-null by the check above
+            val nonNullViewModel = viewModel
+            val nonNullMapState = mapState
             NavigationApp(
-                viewModel = viewModel!!,
-                mapState = mapState!!
+                viewModel = nonNullViewModel,
+                mapState = nonNullMapState
             )
         }
     }

@@ -54,6 +54,7 @@ fun NavigationApp(
     val userLocation by viewModel.userLocation.collectAsState()
     val showReportMode by viewModel.showReportMode.collectAsState()
     val selectedReport by viewModel.selectedReport.collectAsState()
+    val votedReports by viewModel.votedReports.collectAsState()
     val osmFeatures by viewModel.osmFeatures.collectAsState()
 
     var showProfileSelector by remember { mutableStateOf(true) }
@@ -467,7 +468,8 @@ fun NavigationApp(
                 onDismiss = { viewModel.closeReportDetails() },
                 onResolve = {
                     viewModel.voteOnReport(report.id)
-                }
+                },
+                isVoted = votedReports.contains(report.id)
             )
         }
 
@@ -851,7 +853,8 @@ fun ReportFormDialog(
 fun ReportDetailsDialog(
     report: Report,
     onDismiss: () -> Unit,
-    onResolve: () -> Unit
+    onResolve: () -> Unit,
+    isVoted: Boolean = false
 ) {
     Box(
         modifier = Modifier
@@ -998,24 +1001,17 @@ fun ReportDetailsDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "5 votes needed to mark as resolved",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Action buttons
                 if (report.status == ReportStatus.ACTIVE) {
                     Button(
                         onClick = onResolve,
+                        enabled = !isVoted,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                     ) {
-                        Text("✓ Resolved")
+                        Text(if (isVoted) "✓ Voted" else "✓ Resolved")
                     }
                 } else {
                     Text(
