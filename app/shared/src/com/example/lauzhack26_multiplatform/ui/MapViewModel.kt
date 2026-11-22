@@ -14,7 +14,6 @@ import com.example.lauzhack26_multiplatform.model.NominatimSearchResult
 import com.example.lauzhack26_multiplatform.model.ObstacleType
 import com.example.lauzhack26_multiplatform.model.OsmFeature
 import com.example.lauzhack26_multiplatform.model.Report
-import com.example.lauzhack26_multiplatform.model.ReportType
 import com.example.lauzhack26_multiplatform.model.RouteRequest
 import com.example.lauzhack26_multiplatform.model.RouteResponse
 import com.example.lauzhack26_multiplatform.model.Severity
@@ -48,12 +47,12 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.math.pow
 import kotlin.time.Duration.Companion.milliseconds
 
 class MapViewModel(
     private val httpClient: HttpClient,
-    private val serverUrl: String = "http://localhost:8081"
+    private val serverUrl: String = "http://localhost:8081",
+    initialLocationTracker: LocationTracker? = null
 ) : ViewModel() {
 
     private val _selectedProfile = MutableStateFlow(MobilityProfile.WHEELCHAIR)
@@ -90,7 +89,7 @@ class MapViewModel(
     private val _userLocation = MutableStateFlow<Location?>(null)
     val userLocation: StateFlow<Location?> = _userLocation.asStateFlow()
 
-    private var locationTracker: LocationTracker? = null
+    private var locationTracker: LocationTracker? = initialLocationTracker
 
     // Avoid polygon mode state
     private val _avoidMode = MutableStateFlow(false)
@@ -133,8 +132,8 @@ class MapViewModel(
                 println("[Obstacles] ${features.size} obstacles chargés depuis le fichier hors-ligne")
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                println("[Obstacles] Erreur lors du chargement du fichier hors-ligne: ${e.message}")
+            } catch (ex: Exception) {
+                println("[Obstacles] Erreur lors du chargement du fichier hors-ligne: ${ex.message}")
                 _allOsmFeatures.value = emptyList()
             }
         }

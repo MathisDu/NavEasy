@@ -10,4 +10,4 @@ actual class LocationTracker {
     }
 }
 
-actual fun createLocationTracker(): LocationTracker = LocationTracker()
+actual fun createLocationTracker(): LocationTracker? = LocationTracker()
